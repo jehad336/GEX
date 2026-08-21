@@ -147,8 +147,10 @@ export function SummaryBar({
           label="0DTE GEX"
           value={formatExposure(snapshot.dte0.net_gex, settings.units)}
           sub={
-            snapshot.totals.net_gex
-              ? `${((Math.abs(snapshot.dte0.net_gex) / Math.abs(snapshot.totals.net_gex)) * 100).toFixed(0)}% of total`
+            // Measured against ABSOLUTE gamma, not net. Net can be near zero when
+            // calls and puts offset, which would make this share exceed 100%.
+            snapshot.totals.absolute_gex
+              ? `${((snapshot.dte0.absolute_gex / snapshot.totals.absolute_gex) * 100).toFixed(0)}% of chain gamma`
               : undefined
           }
           tone={toneForValue(snapshot.dte0.net_gex)}

@@ -172,6 +172,33 @@ export interface Underlying {
   delay_status: DelayStatus;
 }
 
+export interface OptionContract {
+  symbol: string;
+  underlying: string;
+  expiration: string;
+  dte: number;
+  strike: number;
+  type: 'call' | 'put';
+  multiplier: number;
+  bid: number | null;
+  ask: number | null;
+  mid: number | null;
+  last: number | null;
+  volume: number;
+  open_interest: number;
+  iv: number | null;
+  delta: number | null;
+  gamma: number | null;
+  theta: number | null;
+  vega: number | null;
+  underlying_price: number | null;
+  quote_timestamp: string | null;
+  trade_timestamp: string | null;
+  oi_timestamp: string | null;
+  source: string;
+  delay_status: DelayStatus;
+}
+
 export interface Bar {
   t: string;
   o: number;
@@ -444,164 +471,6 @@ export interface OpportunityResponse {
   delivery: string;
 }
 
-export type ExpirationMode =
-  | '0dte'
-  | '1dte'
-  | 'le7'
-  | 'le30'
-  | 'monthly'
-  | 'all'
-  | 'custom'
-  | 'single'
-  | 'multiple';
-
-export interface LadderContract {
-  symbol: string;
-  expiration: string;
-  dte: number;
-  type: 'call' | 'put';
-  strike: number;
-  multiplier: number;
-  open_interest: number;
-  volume: number;
-  bid: number | null;
-  ask: number | null;
-  iv: number | null;
-  delta: number | null;
-  gamma: number | null;
-  gex: number;
-  dex: number;
-  raw_dex: number;
-  vanna_exposure: number;
-  charm_exposure: number;
-}
-
-export interface ExposureLadderRow {
-  strike: number;
-  distance: number;
-  distance_pct: number;
-  net_delta: number;
-  call_delta: number;
-  put_delta: number;
-  raw_net_delta: number;
-  raw_call_delta: number;
-  raw_put_delta: number;
-  net_gamma: number;
-  call_gamma: number;
-  put_gamma: number;
-  net_vanna: number;
-  call_vanna: number;
-  put_vanna: number;
-  net_charm: number;
-  call_charm: number;
-  put_charm: number;
-  net_oi: number;
-  total_oi: number;
-  call_oi: number;
-  put_oi: number;
-  net_volume: number;
-  total_volume: number;
-  call_volume: number;
-  put_volume: number;
-  iv: number | null;
-  absolute_gex: number;
-  contracts: LadderContract[];
-}
-
-export interface ExposureSummary {
-  net_gex: number;
-  call_gex: number;
-  put_gex: number;
-  absolute_gex: number;
-  net_dex: number;
-  call_dex: number;
-  put_dex: number;
-  raw_net_dex: number;
-  raw_call_dex: number;
-  raw_put_dex: number;
-  net_vanna: number;
-  net_charm: number;
-  total_oi: number;
-  call_oi: number;
-  put_oi: number;
-  total_volume: number;
-  call_volume: number;
-  put_volume: number;
-  put_call_oi_ratio: number | null;
-  put_call_volume_ratio: number | null;
-  contract_count: number;
-}
-
-export interface ExpirationContribution {
-  expiration: string;
-  dte: number;
-  call_gex: number;
-  put_gex: number;
-  net_gex: number;
-  absolute_gex: number;
-  total_oi: number;
-  share_of_absolute: number;
-}
-
-export interface ExpirationChoice {
-  expiration: string;
-  dte: number;
-  is_0dte: boolean;
-  is_monthly: boolean;
-  kind: string;
-  selected: boolean;
-}
-
-export interface ExposureLadderResponse {
-  symbol: string;
-  spot: number;
-  timestamp: string;
-  provider: string;
-  latency_ms: number;
-  expiration_selection: {
-    mode: ExpirationMode;
-    selected: string[];
-    available: ExpirationChoice[];
-  };
-  strike_range_pct: number | null;
-  rows: ExposureLadderRow[];
-  summary: ExposureSummary;
-  dte0_summary: ExposureSummary;
-  key_levels: Record<string, Level>;
-  expected_move: ExpectedMove | null;
-  gamma_condition: {
-    label: string;
-    gamma_regime: string;
-    positioning: string;
-    call_dominance_score: number;
-    near_flip: boolean;
-    flip_distance_pct: number | null;
-    flip_proximity_warning: boolean;
-    explanation: string;
-    methodology: string;
-  };
-  expiration_contributions: ExpirationContribution[];
-  freshness: {
-    underlying: DelayStatus;
-    quotes: DelayStatus;
-    trades: DelayStatus;
-    greeks_as_of: string | null;
-    quote_as_of: string | null;
-    trade_as_of: string | null;
-    greeks_source: string;
-    open_interest: DelayStatus;
-    oi_as_of: string | null;
-    excluded_contracts: number;
-    note: string;
-  };
-  previous_close: number | null;
-  day_open: number | null;
-  sign_convention: string;
-  methodology: Record<string, string>;
-  disclaimer: string;
-  demo_banner: DemoBanner | null;
-}
-
 export interface MarketStatus {
   state: 'PRE_MARKET' | 'OPEN' | 'AFTER_HOURS' | 'CLOSED';
   timezone: string;
@@ -640,3 +509,179 @@ export interface DashboardSettings {
   theme: 'dark' | 'light';
   timezone: 'America/New_York' | 'local';
 }
+
+/* ------------------------------------------------------------------ ladder */
+
+export interface LadderRow {
+  strike: number;
+  distance: number;
+  distancePercent: number;
+  netDelta: number;
+  netGamma: number;
+  netVanna: number;
+  netCharm: number;
+  callGamma: number;
+  putGamma: number;
+  callDelta: number;
+  putDelta: number;
+  callVanna: number;
+  putVanna: number;
+  callCharm: number;
+  putCharm: number;
+  netOI: number;
+  callOI: number;
+  putOI: number;
+  totalOI: number;
+  callVolume: number;
+  putVolume: number;
+  netVolume: number;
+  totalVolume: number;
+  callIv: number | null;
+  putIv: number | null;
+  contractCount: number;
+}
+
+export interface LadderLevel {
+  label: string;
+  price: number;
+  distance: number | null;
+  distancePercent: number | null;
+  gex: number | null;
+  openInterest: number | null;
+  volume: number | null;
+  confidence: string | null;
+  origin: DataOrigin;
+  note: string | null;
+}
+
+export interface LadderKeyLevels {
+  spot: number;
+  gammaFlip: LadderLevel | null;
+  callWall: LadderLevel | null;
+  putWall: LadderLevel | null;
+  largestCallGamma: LadderLevel | null;
+  largestPutGamma: LadderLevel | null;
+  largestCallOi: LadderLevel | null;
+  largestPutOi: LadderLevel | null;
+  expectedMoveHigh: number | null;
+  expectedMoveLow: number | null;
+  previousClose: number | null;
+  dayOpen: number | null;
+  dayHigh: number | null;
+  dayLow: number | null;
+  lowerGammaTransition: number | null;
+  upperGammaTransition: number | null;
+  allGammaTransitions: number[];
+}
+
+export interface GammaCondition {
+  positioning: 'CALL DOMINATED' | 'PUT DOMINATED' | 'BALANCED';
+  regime: string;
+  score: number;
+  components: Record<string, number>;
+  weights: Record<string, number>;
+  balanced_band: number;
+  distance_to_flip_pct: number | null;
+  explanation: string;
+}
+
+export interface ExpirationContribution {
+  expiration: string;
+  dte: number;
+  isZeroDte: boolean;
+  callGex: number;
+  putGex: number;
+  netGex: number;
+  absoluteGex: number;
+  netShare: number;
+  absoluteShare: number;
+  totalOi: number;
+  totalVolume: number;
+  atmIv: number | null;
+  contractCount: number;
+}
+
+export interface LadderResponse {
+  symbol: string;
+  spot: number;
+  timestamp: string;
+  provider: string;
+  latencyMs: number;
+  calculationMs: number;
+  signConvention: string;
+  exerciseStyle: string;
+  rateSource: string;
+  riskFreeRate: number;
+  dividendYield: number;
+  expirationSelection: {
+    mode: string;
+    maxDte: number | null;
+    expirations: string[];
+    strikeRangePct: number | null;
+    include0dte: boolean;
+    contractsInScope: number;
+    strikesInScope: number;
+    strikesVisible: number;
+  };
+  rows: LadderRow[];
+  summary: {
+    netGex: number;
+    callGex: number;
+    putGex: number;
+    absoluteGex: number;
+    netDex: number;
+    netVanna: number;
+    netCharm: number;
+    totalOi: number;
+    callOi: number;
+    putOi: number;
+    callVolume: number;
+    putVolume: number;
+    putCallOiRatio: number | null;
+    putCallVolumeRatio: number | null;
+    contractCount: number;
+  };
+  dte0: {
+    available: boolean;
+    expiration: string | null;
+    netGex: number;
+    callGex: number;
+    putGex: number;
+    callOi: number;
+    putOi: number;
+    callVolume: number;
+    putVolume: number;
+    shareOfAbsoluteGex: number | null;
+  };
+  keyLevels: LadderKeyLevels;
+  expectedMove: {
+    expiration: string;
+    dte: number;
+    atmStrike: number;
+    straddle: number | null;
+    movePoints: number | null;
+    movePercent: number | null;
+    high: number | null;
+    low: number | null;
+    method: string;
+  } | null;
+  gammaCondition: GammaCondition;
+  expirationContributions: ExpirationContribution[];
+  oiQuartiles: { q1: number; q2: number; q3: number; max: number };
+  freshness: {
+    status: DelayStatus;
+    asOf: string | null;
+    source: string;
+    note: string | null;
+    underlyingStatus: DelayStatus;
+    openInterestAsOf: string | null;
+    greeksAsOf: string | null;
+  };
+  quality: QualityReport;
+  disclaimer: string;
+  demoBanner: DemoBanner | null;
+}
+
+export type LadderMetric = 'gex' | 'dex' | 'vanna' | 'charm' | 'oi' | 'volume' | 'all';
+export type LadderView = 'compact' | 'advanced';
+export type ExpirationMode = '0dte' | '1dte' | 'weekly' | 'monthly' | 'all' | 'single' | 'custom';

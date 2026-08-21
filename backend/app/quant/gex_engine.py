@@ -241,9 +241,22 @@ def compute_by_strike(
                 net_charm=float(chm[m].sum()),
                 call_vgex=float(vgex[mc].sum()),
                 put_vgex=float(vgex[mp].sum()),
+                call_vanna=float(van[mc].sum()),
+                put_vanna=float(van[mp].sum()),
+                call_charm=float(chm[mc].sum()),
+                put_charm=float(chm[mp].sum()),
+                call_iv=_mean_iv(arrays.iv[mc]),
+                put_iv=_mean_iv(arrays.iv[mp]),
+                contract_count=int(m.sum()),
             )
         )
     return out
+
+
+def _mean_iv(values: np.ndarray) -> float | None:
+    """Average of the quoted IVs only. Zeros mean "not supplied", not "zero vol"."""
+    live = values[values > 0]
+    return float(live.mean()) if live.size else None
 
 
 def compute_by_expiry(
@@ -357,6 +370,28 @@ def find_zero_gamma(prices: np.ndarray, net_gex: np.ndarray) -> float | None:
     if y1 == y0:
         return float(0.5 * (x0 + x1))
     return float(x0 - y0 * (x1 - x0) / (y1 - y0))
+
+
+def find_zero_gamma_crossings(
+    prices: np.ndarray, net_gex: np.ndarray
+) -> list[float]:
+    """Every interpolated zero crossing in the profile, ascending.
+
+    A chain can cross zero more than once - typically a lower transition below a
+    put-heavy region and an upper one above the call wall. Reporting only the
+    middle crossing hides the boundary the market is actually approaching.
+    """
+    if prices.size < 2:
+        return []
+    out: list[float] = []
+    for i in np.where(np.sign(net_gex[:-1]) * np.sign(net_gex[1:]) < 0)[0]:
+        y0, y1 = net_gex[i], net_gex[i + 1]
+        x0, x1 = prices[i], prices[i + 1]
+        out.append(
+            float(0.5 * (x0 + x1)) if y1 == y0
+            else float(x0 - y0 * (x1 - x0) / (y1 - y0))
+        )
+    return sorted(out)
 
 
 # ------------------------------------------------------------------ helpers

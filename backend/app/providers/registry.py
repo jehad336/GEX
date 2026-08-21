@@ -21,7 +21,11 @@ def build_provider(name: str, settings: Settings) -> MarketDataProvider:
     kw = {"timeout": settings.http_timeout, "max_retries": settings.max_retries}
     if name == "massive":
         return MassiveProvider(
-            settings.massive_api_key, settings.massive_base_url, settings.massive_ws_url, **kw
+            settings.massive_api_key,
+            settings.massive_base_url,
+            settings.massive_ws_url,
+            realtime_entitled=settings.massive_realtime,
+            **kw,
         )
     if name == "tradier":
         return TradierProvider(settings.tradier_api_key, settings.tradier_base_url, **kw)

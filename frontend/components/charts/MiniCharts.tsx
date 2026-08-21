@@ -85,7 +85,6 @@ export function GexByExpiryChart({
 
   return <EChart option={option} height={height} theme={theme} />;
 }
-
 /* ------------------------------------------------------------- OI / volume */
 
 export function OiVolumeChart({
@@ -188,7 +187,6 @@ export function OiVolumeChart({
 
   return <EChart option={option} height={height} theme={theme} />;
 }
-
 /* ------------------------------------------------------------- skew */
 
 export function SkewChart({
@@ -460,3 +458,4 @@ export function IntradayGexChart({
 
   return <EChart option={option} height={height} theme={theme} />;
 }
+

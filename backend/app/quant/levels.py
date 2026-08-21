@@ -322,3 +322,103 @@ def put_call_ratios(
         call_oi=call_oi,
         put_oi=put_oi,
     )
+
+
+# ------------------------------------------------------------------ condition
+
+# Weights for the call/put dominance score. Gamma leads because it drives the
+# hedging flow; open interest corroborates the standing book; volume reflects
+# what is being added today, and same-day gamma is what decays into the close.
+W_COND_GEX = 0.40
+W_COND_OI = 0.25
+W_COND_VOLUME = 0.20
+W_COND_DTE0 = 0.15
+
+# Below this the two sides are close enough that calling a winner is noise.
+BALANCED_BAND = 0.12
+
+
+def _lean(call_value: float, put_value: float) -> float:
+    """Signed share in [-1, 1]: +1 all calls, -1 all puts, 0 evenly split."""
+    total = abs(call_value) + abs(put_value)
+    return (abs(call_value) - abs(put_value)) / total if total > 0 else 0.0
+
+
+def classify_gamma_condition(
+    call_gex: float,
+    put_gex: float,
+    call_oi: int,
+    put_oi: int,
+    call_volume: int,
+    put_volume: int,
+    dte0_call_gex: float = 0.0,
+    dte0_put_gex: float = 0.0,
+    net_gex: float = 0.0,
+    spot: float | None = None,
+    zero_gamma: float | None = None,
+    near_flip_pct: float = 0.5,
+) -> dict:
+    """Rule-based market gamma condition. Every input and weight is reported.
+
+    Two independent readings are returned, because they answer different
+    questions: `positioning` says which side of the book dominates, and `regime`
+    says whether dealer hedging dampens or amplifies moves.
+    """
+    components = {
+        "gex": _lean(call_gex, put_gex),
+        "open_interest": _lean(call_oi, put_oi),
+        "volume": _lean(call_volume, put_volume),
+        "dte0_gex": _lean(dte0_call_gex, dte0_put_gex),
+    }
+    score = (
+        W_COND_GEX * components["gex"]
+        + W_COND_OI * components["open_interest"]
+        + W_COND_VOLUME * components["volume"]
+        + W_COND_DTE0 * components["dte0_gex"]
+    )
+
+    if score > BALANCED_BAND:
+        positioning = "CALL DOMINATED"
+    elif score < -BALANCED_BAND:
+        positioning = "PUT DOMINATED"
+    else:
+        positioning = "BALANCED"
+
+    distance_pct = (
+        (spot - zero_gamma) / spot * 100.0 if (spot and zero_gamma) else None
+    )
+    if distance_pct is not None and abs(distance_pct) <= near_flip_pct:
+        regime = "NEAR GAMMA FLIP"
+    elif net_gex > 0:
+        regime = "POSITIVE GAMMA"
+    elif net_gex < 0:
+        regime = "NEGATIVE GAMMA"
+    else:
+        regime = "NEUTRAL"
+
+    explanation = (
+        f"Dominance score {score:+.2f} from "
+        f"{W_COND_GEX:.2f}x gamma ({components['gex']:+.2f}), "
+        f"{W_COND_OI:.2f}x open interest ({components['open_interest']:+.2f}), "
+        f"{W_COND_VOLUME:.2f}x volume ({components['volume']:+.2f}) and "
+        f"{W_COND_DTE0:.2f}x same-day gamma ({components['dte0_gex']:+.2f}). "
+        f"Scores within +/-{BALANCED_BAND:.2f} are reported as balanced. "
+        "This is a weighted reading of observed data under the active sign "
+        "convention, not a directional forecast."
+    )
+
+    return {
+        "positioning": positioning,
+        "regime": regime,
+        "score": round(score, 4),
+        "components": {k: round(v, 4) for k, v in components.items()},
+        "weights": {
+            "gex": W_COND_GEX, "open_interest": W_COND_OI,
+            "volume": W_COND_VOLUME, "dte0_gex": W_COND_DTE0,
+        },
+        "balanced_band": BALANCED_BAND,
+        "distance_to_flip_pct": (
+            round(distance_pct, 4) if distance_pct is not None else None
+        ),
+        "explanation": explanation,
+    }

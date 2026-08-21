@@ -23,8 +23,11 @@ class Settings(BaseSettings):
 
     # credentials
     massive_api_key: str = ""
-    massive_base_url: str = "https://api.massive.dev/v1"
-    massive_ws_url: str = "wss://stream.massive.dev/v1"
+    massive_base_url: str = "https://api.massive.com"
+    massive_ws_url: str = "wss://socket.massive.com"
+    # Never inferred: the vendor does not flag delay, and guessing
+    # upward would label 15-minute data as LIVE.
+    massive_realtime: bool = False
 
     tradier_api_key: str = ""
     tradier_base_url: str = "https://api.tradier.com/v1"

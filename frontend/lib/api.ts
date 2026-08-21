@@ -4,6 +4,7 @@
  */
 
 import type { DashboardSettings } from './types';
+import demoFixtures from './demoFixtures.json';
 
 export const STATIC_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
@@ -86,59 +87,40 @@ export async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> 
   return (await res.json()) as T;
 }
 
-async function staticDemoResponse<T>(path: string): Promise<T> {
-  const fixturesModule = await import('./demoFixtures.json');
-  const fixtures = fixturesModule.default as Record<string, unknown>;
+/**
+ * Serves a captured fixture for the static demo build.
+ *
+ * There is deliberately NO fallback to another symbol. An earlier version
+ * rewrote the path to SPY and relabelled the `symbol` field, so NVDA rendered
+ * SPY's spot, walls and gamma flip under NVDA's name. Because it forged the
+ * very field the UI checks, the app's own cross-symbol guard could not catch
+ * it. A missing symbol now fails honestly and the panel says so.
+ */
+function staticDemoResponse<T>(path: string): T {
   const pathname = path.split('?', 1)[0] ?? path;
-  const symbolMatch = pathname.match(/^\/api\/(?:gex|market|options|history|exposure|opportunities)\/([^/]+)/);
-  const requestedSymbol = symbolMatch?.[1]?.toUpperCase() ?? null;
-  const fixturePath = requestedSymbol
-    ? pathname.replace(`/${requestedSymbol}`, '/SPY')
-    : pathname;
-  const exposureKey = pathname.startsWith('/api/exposure/')
-    ? canonicalExposureFixtureKey(path, requestedSymbol, fixtures)
-    : null;
-  const source = (exposureKey ? fixtures[exposureKey] : undefined)
-    ?? fixtures[fixturePath]
-    ?? (pathname === '/api/symbols/search' ? fixtures['/api/symbols/search'] : undefined);
+  const fixtures = demoFixtures as Record<string, unknown>;
+  const source = fixtures[pathname];
+
   if (source === undefined) {
-    throw new ApiError(`Demo fixture unavailable for ${pathname}`, 404, 'demo');
-  }
-  const cloned = JSON.parse(JSON.stringify(source)) as unknown;
-  if (!requestedSymbol || requestedSymbol === 'SPY') return cloned as T;
-  return replaceDemoSymbol(cloned, requestedSymbol) as T;
-}
-
-function canonicalExposureFixtureKey(
-  path: string,
-  requestedSymbol: string | null,
-  fixtures: Record<string, unknown>,
-): string {
-  const url = new URL(path, 'https://demo.invalid');
-  const fixturePath = requestedSymbol
-    ? url.pathname.replace(`/${requestedSymbol}`, '/SPY')
-    : url.pathname;
-  const mode = url.searchParams.get('expirationMode') ?? 'all';
-  const range = url.searchParams.get('strikeRange') ?? '3';
-  const expiration = url.searchParams.get('expiration');
-  const query = new URLSearchParams({ expirationMode: mode, strikeRange: range });
-  if (expiration && mode === 'single') query.set('expiration', expiration);
-  const exact = `${fixturePath}?${query.toString()}`;
-  if (fixtures[exact] !== undefined) return exact;
-  return `${fixturePath}?expirationMode=all&strikeRange=3`;
-}
-
-function replaceDemoSymbol(value: unknown, symbol: string): unknown {
-  if (Array.isArray(value)) return value.map((item) => replaceDemoSymbol(item, symbol));
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [
-        key,
-        key === 'symbol' && item === 'SPY' ? symbol : replaceDemoSymbol(item, symbol),
-      ]),
+    const symbol = pathname
+      .match(/^\/api\/(?:gex|market|options|history|exposure|opportunities)\/([^/]+)/)?.[1]
+      ?.toUpperCase();
+    throw new ApiError(
+      symbol
+        ? `${symbol} is not included in this static demo. Captured symbols: ${demoSymbols().join(', ')}.`
+        : `This view is not available in the static demo (${pathname}).`,
+      404,
+      'demo',
+      'demo_fixture_missing',
     );
   }
-  return value;
+  return JSON.parse(JSON.stringify(source)) as T;
+}
+
+/** Symbols actually captured in the fixture set, for the demo build's UI. */
+export function demoSymbols(): string[] {
+  const list = (demoFixtures as Record<string, unknown>).__symbols__;
+  return Array.isArray(list) ? (list as string[]) : [];
 }
 
 export async function apiPost<T>(path: string, payload: unknown): Promise<T> {

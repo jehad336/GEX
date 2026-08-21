@@ -1,490 +1,374 @@
 """Exposure Ladder aggregation.
 
-The service receives normalized contracts, calculates every contract exposure,
-then aggregates by strike. It never averages a Greek and multiplies aggregate
-open interest: that shortcut is wrong when expirations, IVs, or multipliers differ.
+Produces one row per strike carrying delta, gamma, vanna, charm, open interest
+and volume exposure, plus the key levels drawn over the ladder.
+
+THE AGGREGATION RULE THAT MATTERS
+---------------------------------
+Exposure is computed per contract and then summed. It is never derived by
+averaging a greek across contracts and multiplying by aggregate open interest.
+Those are not the same number: a strike holds contracts from many expirations
+with different gammas, and an OI-weighted average silently reweights them.
+`ChainArrays` -> `*_per_contract` -> group by strike is the only path used here.
+
+Everything downstream of the sign convention is a model estimate. Open interest,
+volume and IV are observed.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import logging
+import time
+from dataclasses import dataclass
 from datetime import UTC, date, datetime
-
-import numpy as np
+from typing import Literal
 
 from app.core.config import get_settings
-from app.exposure_models import (
-    ExpirationChoice,
-    ExpirationContribution,
-    ExpirationMode,
-    ExpirationSelection,
-    ExposureLadderResponse,
-    ExposureLadderRow,
-    ExposureSummary,
-    GammaCondition,
-    LadderContract,
-    LadderFreshness,
+from app.models import (
+    DataOrigin,
+    ExpectedMove,
+    Freshness,
+    Level,
+    StrikeGex,
 )
-from app.models import DataOrigin, DelayStatus, Level, OptionContract, StrikeGex
 from app.quant import gex_engine as engine
 from app.quant import levels as lv
 from app.quant import quality, volatility
+from app.quant.rates import exercise_style, get_rate_provider
 from app.services import analytics
-from app.services.analytics import AnalyticsContext
-from app.services.rates import get_risk_free_rate
+from app.services.analytics import AnalyticsContext, ChainRequest
+
+log = logging.getLogger("gex.exposure_ladder")
+
+ExpirationMode = Literal[
+    "0dte", "1dte", "weekly", "monthly", "all", "custom", "single"
+]
+
+# Preset expiration windows, in days to expiry.
+EXPIRATION_MODES: dict[str, float | None] = {
+    "0dte": 0.999,     # same session only
+    "1dte": 1.999,
+    "weekly": 7.0,
+    "monthly": 35.0,
+    "all": None,
+    "custom": None,
+    "single": None,
+}
+
+STRIKE_RANGE_PRESETS = [1.0, 2.0, 3.0, 5.0, 10.0]
+DEFAULT_STRIKE_RANGE_PCT = 3.0
 
 
-@dataclass(frozen=True)
-class LadderFilters:
-    expiration_mode: ExpirationMode = ExpirationMode.ALL
-    expirations: list[date] = field(default_factory=list)
+@dataclass
+class LadderRequest:
+    """Everything the screen can vary. Mirrors the query string one-to-one."""
+
+    symbol: str
+    expiration_mode: str = "all"
+    expirations: list[date] | None = None
     max_dte: float | None = None
-    strike_range_pct: float | None = 3.0
+    strike_range_pct: float | None = DEFAULT_STRIKE_RANGE_PCT
     include_0dte: bool = True
+    convention: str | None = None
+    provider: str | None = None
+
+    def resolved_max_dte(self) -> float | None:
+        """An explicit max_dte wins; otherwise the mode supplies the window."""
+        if self.max_dte is not None:
+            return self.max_dte
+        return EXPIRATION_MODES.get(self.expiration_mode)
+
+    def to_chain_request(self) -> ChainRequest:
+        # The strike band is applied after the levels are derived, so walls
+        # outside a tight band are still found rather than filtered away first.
+        return ChainRequest(
+            symbol=self.symbol,
+            max_dte=self.resolved_max_dte(),
+            expirations=self.expirations,
+            include_0dte=self.include_0dte if self.expiration_mode != "0dte" else True,
+            convention=self.convention,
+            provider=self.provider,
+        )
 
 
-def is_monthly_expiration(value: date) -> bool:
-    """Standard monthly equity expiry: the third Friday of the month."""
-    return value.weekday() == 4 and 15 <= value.day <= 21
+def _distance(strike: float, spot: float) -> tuple[float, float]:
+    return strike - spot, ((strike - spot) / spot * 100.0) if spot else 0.0
 
 
-def filter_contracts(
-    contracts: list[OptionContract], spot: float, filters: LadderFilters
-) -> list[OptionContract]:
-    selected = set(filters.expirations)
-    out: list[OptionContract] = []
-    for contract in contracts:
-        if not filters.include_0dte and contract.dte < 1:
-            continue
-        if filters.max_dte is not None and contract.dte > filters.max_dte:
-            continue
+def _row(r: StrikeGex, spot: float) -> dict:
+    distance, distance_pct = _distance(r.strike, spot)
+    return {
+        "strike": r.strike,
+        "distance": round(distance, 4),
+        "distancePercent": round(distance_pct, 4),
+        # Signed exposures - model-derived under the active convention.
+        "netDelta": r.net_dex,
+        "netGamma": r.net_gex,
+        "netVanna": r.net_vanna,
+        "netCharm": r.net_charm,
+        "callGamma": r.call_gex,
+        "putGamma": r.put_gex,
+        "callDelta": r.call_dex,
+        "putDelta": r.put_dex,
+        "callVanna": r.call_vanna,
+        "putVanna": r.put_vanna,
+        "callCharm": r.call_charm,
+        "putCharm": r.put_charm,
+        # Observed.
+        "netOI": r.call_oi - r.put_oi,
+        "callOI": r.call_oi,
+        "putOI": r.put_oi,
+        "totalOI": r.total_oi,
+        "callVolume": r.call_volume,
+        "putVolume": r.put_volume,
+        "netVolume": r.call_volume - r.put_volume,
+        "totalVolume": r.call_volume + r.put_volume,
+        "callIv": r.call_iv,
+        "putIv": r.put_iv,
+        "contractCount": r.contract_count,
+    }
 
-        mode = filters.expiration_mode
-        if mode == ExpirationMode.DTE0 and contract.dte >= 1:
-            continue
-        if mode == ExpirationMode.DTE1 and not (1 <= contract.dte < 2):
-            continue
-        if mode == ExpirationMode.LE7 and contract.dte > 7:
-            continue
-        if mode == ExpirationMode.LE30 and contract.dte > 30:
-            continue
-        if mode == ExpirationMode.MONTHLY and not is_monthly_expiration(contract.expiration):
-            continue
-        if (
-            mode in (ExpirationMode.CUSTOM, ExpirationMode.SINGLE, ExpirationMode.MULTIPLE)
-            and (not selected or contract.expiration not in selected)
-        ):
-            continue
 
-        if (
-            filters.strike_range_pct is not None
-            and spot > 0
-            and abs(contract.strike - spot) / spot * 100 > filters.strike_range_pct
-        ):
-            continue
-        out.append(contract)
+def _level(level: Level | None) -> dict | None:
+    if level is None or level.price is None:
+        return None
+    return {
+        "label": level.label,
+        "price": level.price,
+        "distance": level.distance,
+        "distancePercent": level.distance_pct,
+        "gex": level.gex,
+        "openInterest": level.open_interest,
+        "volume": level.volume,
+        "confidence": level.confidence,
+        "origin": level.origin.value,
+        "note": level.note,
+    }
+
+
+def _expected_move(em: ExpectedMove | None) -> dict | None:
+    if em is None or em.move_abs is None:
+        return None
+    return {
+        "expiration": em.expiration.isoformat(),
+        "dte": round(em.dte, 3),
+        "atmStrike": em.atm_strike,
+        "straddle": em.straddle,
+        "movePoints": em.move_abs,
+        "movePercent": em.move_pct,
+        "high": em.upper,
+        "low": em.lower,
+        "method": em.method,
+    }
+
+
+def _quartiles(rows: list[StrikeGex]) -> dict:
+    """Open interest quartile thresholds, so the UI can shade concentration."""
+    values = sorted(r.total_oi for r in rows if r.total_oi > 0)
+    if not values:
+        return {"q1": 0, "q2": 0, "q3": 0, "max": 0}
+    at = lambda f: values[min(int(len(values) * f), len(values) - 1)]  # noqa: E731
+    return {"q1": at(0.25), "q2": at(0.50), "q3": at(0.75), "max": values[-1]}
+
+
+def _expiration_contributions(ctx: AnalyticsContext) -> list[dict]:
+    rows = analytics.by_expiry_for(ctx)
+    total_abs = sum(abs(r.call_gex) + abs(r.put_gex) for r in rows) or 1.0
+    total_net = sum(abs(r.net_gex) for r in rows) or 1.0
+    out = []
+    for r in rows:
+        absolute = abs(r.call_gex) + abs(r.put_gex)
+        out.append({
+            "expiration": r.expiration.isoformat(),
+            "dte": round(r.dte, 3),
+            "isZeroDte": r.dte < 1,
+            "callGex": r.call_gex,
+            "putGex": r.put_gex,
+            "netGex": r.net_gex,
+            "absoluteGex": absolute,
+            "netShare": round(abs(r.net_gex) / total_net * 100.0, 3),
+            "absoluteShare": round(absolute / total_abs * 100.0, 3),
+            "totalOi": r.call_oi + r.put_oi,
+            "totalVolume": r.call_volume + r.put_volume,
+            "atmIv": r.atm_iv,
+            "contractCount": r.contract_count,
+        })
     return out
 
 
-def _arrays(
-    contracts: list[OptionContract], spot: float
-) -> engine.ChainArrays:
+def build_ladder(req: LadderRequest, ctx: AnalyticsContext) -> dict:
+    """Assemble the full screen payload from an already-built analytics context."""
+    started = time.perf_counter()
+    spot = ctx.spot
     settings = get_settings()
-    arrays = engine.ChainArrays(contracts, settings.contract_multiplier_default)
-    if arrays.size:
-        engine.fill_missing_greeks(
-            arrays, spot, get_risk_free_rate(), settings.dividend_yield
-        )
-    return arrays
+    rates = get_rate_provider()
 
+    # ---- levels first, over the UNFILTERED strike set --------------------
+    # A wall can sit outside a +/-1% band; finding it before narrowing keeps the
+    # overlay honest instead of clamping it to the visible window.
+    profile = analytics.profile_for(ctx)
+    key_levels = analytics.levels_for(ctx, profile)
+    em = volatility.expected_move(ctx.contracts, spot)
+    totals = analytics.totals_for(ctx)
+    dte0 = analytics.dte0_totals(ctx)
 
-def _summary(arrays: engine.ChainArrays, spot: float, convention: str) -> ExposureSummary:
-    totals = engine.compute_totals(arrays, spot, convention)
-    raw_dex = arrays.delta * arrays.oi * arrays.multiplier * spot
-    calls, puts = arrays.is_call, ~arrays.is_call
-    total_oi = totals.call_oi + totals.put_oi
-    total_volume = totals.call_volume + totals.put_volume
-    return ExposureSummary(
-        net_gex=totals.net_gex,
-        call_gex=totals.call_gex,
-        put_gex=totals.put_gex,
-        absolute_gex=totals.absolute_gex,
-        net_dex=totals.net_dex,
-        call_dex=totals.call_dex,
-        put_dex=totals.put_dex,
-        raw_net_dex=float(raw_dex.sum()),
-        raw_call_dex=float(raw_dex[calls].sum()),
-        raw_put_dex=float(raw_dex[puts].sum()),
-        net_vanna=totals.net_vanna,
-        net_charm=totals.net_charm,
-        total_oi=total_oi,
-        call_oi=totals.call_oi,
-        put_oi=totals.put_oi,
-        total_volume=total_volume,
-        call_volume=totals.call_volume,
-        put_volume=totals.put_volume,
-        put_call_oi_ratio=(totals.put_oi / totals.call_oi) if totals.call_oi else None,
-        put_call_volume_ratio=(
-            totals.put_volume / totals.call_volume if totals.call_volume else None
-        ),
-        contract_count=totals.contract_count,
+    prices, net_curve, _, _ = engine.gamma_profile(
+        ctx.arrays, spot, ctx.convention,
+        r=rates.rate(), q=rates.dividend_yield(req.symbol),
+    )
+    crossings = engine.find_zero_gamma_crossings(prices, net_curve)
+    lower = [c for c in crossings if c <= spot]
+    upper = [c for c in crossings if c > spot]
+
+    # ---- rows, narrowed to the requested band ----------------------------
+    all_rows = ctx.by_strike
+    band = req.strike_range_pct
+    visible = (
+        [r for r in all_rows if abs((r.strike - spot) / spot * 100.0) <= band]
+        if band and spot else all_rows
+    )
+    if not visible and all_rows:
+        # Never return an empty ladder when the chain has strikes: widen to the
+        # nearest ones rather than showing nothing.
+        visible = sorted(all_rows, key=lambda r: abs(r.strike - spot))[:21]
+
+    rows = sorted((_row(r, spot) for r in visible), key=lambda x: -x["strike"])
+
+    dte0_contracts = engine.dte0_contracts(ctx.contracts)
+    dte0_call_gex = dte0_put_gex = 0.0
+    if dte0_contracts:
+        arrays0 = engine.ChainArrays(dte0_contracts, settings.contract_multiplier_default)
+        engine.fill_missing_greeks(arrays0, spot, rates.rate(),
+                                   rates.dividend_yield(req.symbol))
+        t0 = engine.compute_totals(arrays0, spot, ctx.convention)
+        dte0_call_gex, dte0_put_gex = t0.call_gex, t0.put_gex
+
+    condition = lv.classify_gamma_condition(
+        call_gex=totals.call_gex, put_gex=totals.put_gex,
+        call_oi=totals.call_oi, put_oi=totals.put_oi,
+        call_volume=totals.call_volume, put_volume=totals.put_volume,
+        dte0_call_gex=dte0_call_gex, dte0_put_gex=dte0_put_gex,
+        net_gex=totals.net_gex, spot=spot, zero_gamma=profile.zero_gamma,
     )
 
-
-def aggregate_rows(
-    contracts: list[OptionContract], spot: float, convention: str
-) -> list[ExposureLadderRow]:
-    arrays = _arrays(contracts, spot)
-    if not arrays.size:
-        return []
-
-    gex = engine.gex_per_contract(arrays, spot, convention)
-    dex = engine.dex_per_contract(arrays, spot, convention)
-    raw_dex = arrays.delta * arrays.oi * arrays.multiplier * spot
-    vanna = engine.vanna_per_contract(arrays, spot, convention)
-    charm = engine.charm_per_contract(arrays, spot, convention)
-    rows: list[ExposureLadderRow] = []
-
-    for strike in sorted(np.unique(arrays.strike), reverse=True):
-        mask = arrays.strike == strike
-        calls = mask & arrays.is_call
-        puts = mask & ~arrays.is_call
-        indexes = np.flatnonzero(mask)
-        live_iv = indexes[arrays.iv[indexes] > 0]
-        weighted_iv = None
-        if live_iv.size:
-            weights = arrays.oi[live_iv].astype(float)
-            weighted_iv = float(
-                np.average(arrays.iv[live_iv], weights=weights)
-                if weights.sum() > 0 else arrays.iv[live_iv].mean()
-            )
-
-        details = [
-            LadderContract(
-                symbol=contracts[i].symbol,
-                expiration=contracts[i].expiration,
-                dte=contracts[i].dte,
-                type=contracts[i].type.value,
-                strike=contracts[i].strike,
-                multiplier=int(arrays.multiplier[i]),
-                open_interest=int(arrays.oi[i]),
-                volume=int(arrays.volume[i]),
-                bid=contracts[i].bid,
-                ask=contracts[i].ask,
-                iv=float(arrays.iv[i]) if arrays.iv[i] > 0 else None,
-                delta=float(arrays.delta[i]),
-                gamma=float(arrays.gamma[i]),
-                gex=float(gex[i]),
-                dex=float(dex[i]),
-                raw_dex=float(raw_dex[i]),
-                vanna_exposure=float(vanna[i]),
-                charm_exposure=float(charm[i]),
-            )
-            for i in indexes
-        ]
-        call_oi = int(arrays.oi[calls].sum())
-        put_oi = int(arrays.oi[puts].sum())
-        call_volume = int(arrays.volume[calls].sum())
-        put_volume = int(arrays.volume[puts].sum())
-        rows.append(
-            ExposureLadderRow(
-                strike=float(strike),
-                distance=float(strike - spot),
-                distance_pct=float((strike - spot) / spot * 100) if spot else 0.0,
-                net_delta=float(dex[mask].sum()),
-                call_delta=float(dex[calls].sum()),
-                put_delta=float(dex[puts].sum()),
-                raw_net_delta=float(raw_dex[mask].sum()),
-                raw_call_delta=float(raw_dex[calls].sum()),
-                raw_put_delta=float(raw_dex[puts].sum()),
-                net_gamma=float(gex[mask].sum()),
-                call_gamma=float(gex[calls].sum()),
-                put_gamma=float(gex[puts].sum()),
-                net_vanna=float(vanna[mask].sum()),
-                call_vanna=float(vanna[calls].sum()),
-                put_vanna=float(vanna[puts].sum()),
-                net_charm=float(charm[mask].sum()),
-                call_charm=float(charm[calls].sum()),
-                put_charm=float(charm[puts].sum()),
-                net_oi=call_oi - put_oi,
-                total_oi=call_oi + put_oi,
-                call_oi=call_oi,
-                put_oi=put_oi,
-                net_volume=call_volume - put_volume,
-                total_volume=call_volume + put_volume,
-                call_volume=call_volume,
-                put_volume=put_volume,
-                iv=weighted_iv,
-                absolute_gex=float(np.abs(gex[mask]).sum()),
-                contracts=details,
-            )
-        )
-    return rows
-
-
-def _to_strike_gex(rows: list[ExposureLadderRow]) -> list[StrikeGex]:
-    return [
-        StrikeGex(
-            strike=row.strike,
-            call_gex=row.call_gamma,
-            put_gex=row.put_gamma,
-            net_gex=row.net_gamma,
-            call_oi=row.call_oi,
-            put_oi=row.put_oi,
-            total_oi=row.total_oi,
-            call_volume=row.call_volume,
-            put_volume=row.put_volume,
-            call_dex=row.call_delta,
-            put_dex=row.put_delta,
-            net_dex=row.net_delta,
-            net_vanna=row.net_vanna,
-            net_charm=row.net_charm,
-        )
-        for row in rows
-    ]
-
-
-def _crossings(prices: np.ndarray, values: np.ndarray) -> list[float]:
-    out: list[float] = []
-    for i in range(len(values) - 1):
-        x0, x1 = float(prices[i]), float(prices[i + 1])
-        y0, y1 = float(values[i]), float(values[i + 1])
-        if y0 == 0:
-            out.append(x0)
-        elif y0 * y1 < 0:
-            out.append(x0 - y0 * (x1 - x0) / (y1 - y0))
-    if len(values) and values[-1] == 0:
-        out.append(float(prices[-1]))
-    return list(dict.fromkeys(round(value, 8) for value in out))
-
-
-def _levels(
-    contracts: list[OptionContract], rows: list[ExposureLadderRow], spot: float, convention: str
-) -> tuple[dict[str, Level], list[float]]:
-    arrays = _arrays(contracts, spot)
-    settings = get_settings()
-    prices, net, _, _ = engine.gamma_profile(
-        arrays,
-        spot,
-        convention,
-        band_pct=0.12,
-        steps=161,
-        r=get_risk_free_rate(),
-        q=settings.dividend_yield,
-    )
-    crossings = _crossings(prices, net)
-    zero = min(crossings, key=lambda value: abs(value - spot)) if crossings else None
-    strike_rows = _to_strike_gex(rows)
-    levels: dict[str, Level] = {
-        "spot": lv.make_level("Spot", spot, spot, origin=DataOrigin.OBSERVED),
-        "gamma_flip": lv.make_level(
-            "Gamma Flip", zero, spot, note="Nearest interpolated gamma-profile crossing."
-        ),
-        "call_wall": lv.call_wall(strike_rows, spot),
-        "put_wall": lv.put_wall(strike_rows, spot),
-        "largest_call_gamma": lv.largest_by(
-            strike_rows, "call_gex", spot, "Largest Call Gamma"
-        ),
-        "largest_put_gamma": lv.largest_by(
-            strike_rows, "put_gex", spot, "Largest Put Gamma"
-        ),
-        "largest_call_oi": lv.largest_by(
-            strike_rows, "call_oi", spot, "Largest Call OI"
-        ),
-        "largest_put_oi": lv.largest_by(
-            strike_rows, "put_oi", spot, "Largest Put OI"
-        ),
-    }
-    lower = max((value for value in crossings if value < spot), default=None)
-    upper = min((value for value in crossings if value > spot), default=None)
-    levels["lower_gamma_transition"] = lv.make_level(
-        "Lower Gamma Transition", lower, spot
-    )
-    levels["upper_gamma_transition"] = lv.make_level(
-        "Upper Gamma Transition", upper, spot
-    )
-    return levels, crossings
-
-
-def _gamma_condition(
-    summary: ExposureSummary, spot: float, gamma_flip: float | None
-) -> GammaCondition:
-    gex_den = abs(summary.call_gex) + abs(summary.put_gex)
-    oi_den = summary.total_oi
-    volume_den = summary.total_volume
-    gex_share = abs(summary.call_gex) / gex_den if gex_den else 0.5
-    oi_share = summary.call_oi / oi_den if oi_den else 0.5
-    volume_share = summary.call_volume / volume_den if volume_den else 0.5
-    score = 0.5 * gex_share + 0.25 * oi_share + 0.25 * volume_share
-    positioning = "Call Dominated" if score >= 0.60 else "Put Dominated" if score <= 0.40 else "Balanced"
-    flip_distance = abs(spot - gamma_flip) / spot * 100 if gamma_flip and spot else None
-    near_flip = flip_distance is not None and flip_distance <= 0.5
-    flip_proximity_warning = flip_distance is not None and flip_distance < 0.05
-    gamma_regime = "Positive Gamma" if summary.net_gex > 0 else "Negative Gamma" if summary.net_gex < 0 else "Balanced Gamma"
-    label = "Near Gamma Flip" if near_flip else gamma_regime
-    return GammaCondition(
-        label=label,
-        gamma_regime=gamma_regime,
-        positioning=positioning,
-        call_dominance_score=round(score, 4),
-        near_flip=near_flip,
-        flip_distance_pct=flip_distance,
-        flip_proximity_warning=flip_proximity_warning,
-        explanation=(
-            f"{positioning}: weighted call share is {score * 100:.1f}% across absolute GEX "
-            f"(50%), OI (25%), and volume (25%). {gamma_regime}."
-            + (
-                " Spot is <0.01% from the gamma flip."
-                if flip_distance is not None and 0 < flip_distance < 0.01
-                else f" Spot is {flip_distance:.2f}% from the gamma flip."
-                if flip_distance is not None
-                else ""
-            )
-        ),
-        methodology=(
-            "Call dominance = 50% absolute-GEX share + 25% OI share + 25% volume "
-            "share. >=60% is call dominated, <=40% put dominated. Near flip means "
-            "spot is within 0.50% of the nearest repriced gamma-profile crossing."
-        ),
-    )
-
-
-def _expiration_contributions(
-    contracts: list[OptionContract], spot: float, convention: str
-) -> list[ExpirationContribution]:
-    arrays = _arrays(contracts, spot)
-    if not arrays.size:
-        return []
-    gex = engine.gex_per_contract(arrays, spot, convention)
-    total_absolute = float(np.abs(gex).sum())
-    output: list[ExpirationContribution] = []
-    for expiration in sorted(set(arrays.expiration)):
-        indexes = np.array([i for i, value in enumerate(arrays.expiration) if value == expiration])
-        calls = indexes[arrays.is_call[indexes]]
-        puts = indexes[~arrays.is_call[indexes]]
-        absolute = float(np.abs(gex[indexes]).sum())
-        output.append(
-            ExpirationContribution(
-                expiration=expiration,
-                dte=float(arrays.dte[indexes].min()),
-                call_gex=float(gex[calls].sum()) if calls.size else 0.0,
-                put_gex=float(gex[puts].sum()) if puts.size else 0.0,
-                net_gex=float(gex[indexes].sum()),
-                absolute_gex=absolute,
-                total_oi=int(arrays.oi[indexes].sum()),
-                share_of_absolute=(absolute / total_absolute * 100) if total_absolute else 0.0,
-            )
-        )
-    return output
-
-
-def _expiration_selection(
-    all_contracts: list[OptionContract], selected_contracts: list[OptionContract], mode: ExpirationMode
-) -> ExpirationSelection:
-    selected = sorted({contract.expiration for contract in selected_contracts})
-    selected_set = set(selected)
-    by_expiration: dict[date, float] = {}
-    for contract in all_contracts:
-        by_expiration[contract.expiration] = min(
-            contract.dte, by_expiration.get(contract.expiration, contract.dte)
-        )
-    available = []
-    for expiration, dte in sorted(by_expiration.items()):
-        monthly = is_monthly_expiration(expiration)
-        is_0dte = dte < 1
-        kind = "0DTE" if is_0dte else "Monthly" if monthly else "Weekly" if expiration.weekday() == 4 else "Daily"
-        available.append(
-            ExpirationChoice(
-                expiration=expiration,
-                dte=dte,
-                is_0dte=is_0dte,
-                is_monthly=monthly,
-                kind=kind,
-                selected=expiration in selected_set,
-            )
-        )
-    return ExpirationSelection(mode=mode, selected=selected, available=available)
-
-
-def build_ladder(ctx: AnalyticsContext, filters: LadderFilters) -> ExposureLadderResponse:
-    contracts = filter_contracts(ctx.contracts, ctx.spot, filters)
-    rows = aggregate_rows(contracts, ctx.spot, ctx.convention)
-    arrays = _arrays(contracts, ctx.spot)
-    summary = _summary(arrays, ctx.spot, ctx.convention)
-    dte0_contracts = [contract for contract in contracts if contract.dte < 1]
-    dte0_summary = _summary(_arrays(dte0_contracts, ctx.spot), ctx.spot, ctx.convention)
-    levels, _ = _levels(contracts, rows, ctx.spot, ctx.convention)
-    expected_move = volatility.expected_move(contracts, ctx.spot)
-    if expected_move:
-        levels["expected_move_high"] = lv.make_level("Expected Move High", expected_move.upper, ctx.spot)
-        levels["expected_move_low"] = lv.make_level("Expected Move Low", expected_move.lower, ctx.spot)
     underlying = ctx.chain.underlying
-    levels["previous_close"] = lv.make_level(
-        "Previous Close", underlying.previous_close, ctx.spot, origin=DataOrigin.OBSERVED
+    freshness = Freshness(
+        status=quality.resolve_freshness(ctx.contracts),
+        as_of=ctx.chain.freshness.as_of,
+        source=ctx.provider_name,
+        origin=DataOrigin.MODEL_DERIVED,
+        note=ctx.chain.freshness.note,
     )
-    levels["day_open"] = lv.make_level(
-        "Day Open", underlying.open, ctx.spot, origin=DataOrigin.OBSERVED
-    )
+    oi_ts = next((c.oi_timestamp for c in ctx.contracts if c.oi_timestamp), None)
 
-    selected_status = quality.resolve_freshness(contracts) if contracts else DelayStatus.UNKNOWN
-    quote_times = [contract.quote_timestamp for contract in contracts if contract.quote_timestamp]
-    trade_times = [contract.trade_timestamp for contract in contracts if contract.trade_timestamp]
-    oi_times = [contract.oi_timestamp for contract in contracts if contract.oi_timestamp]
-    missing_vendor_greeks = sum(
-        contract.delta is None or contract.gamma is None for contract in contracts
-    )
-    if contracts and missing_vendor_greeks == len(contracts):
-        greeks_source = "calculated Δ/Γ/Vanna/Charm"
-    elif missing_vendor_greeks:
-        greeks_source = "mixed vendor/calculated Δ/Γ; calculated Vanna/Charm"
-    else:
-        greeks_source = "vendor Δ/Γ; calculated Vanna/Charm"
-    freshness = LadderFreshness(
-        underlying=underlying.delay_status,
-        quotes=selected_status,
-        trades=selected_status,
-        greeks_as_of=max(quote_times) if quote_times else None,
-        quote_as_of=max(quote_times) if quote_times else None,
-        trade_as_of=max(trade_times) if trade_times else None,
-        greeks_source=greeks_source,
-        open_interest=DelayStatus.PREVIOUS_DAY_OI,
-        oi_as_of=max(oi_times) if oi_times else None,
-        excluded_contracts=int(ctx.quality.get("dropped", 0)),
-        note=(
-            "Open interest is a previous-session observation. Signed exposures and "
-            "key levels are model-derived from the selected normalized contracts."
-        ),
-    )
-    return ExposureLadderResponse(
-        symbol=ctx.chain.underlying.symbol,
-        spot=ctx.spot,
-        timestamp=datetime.now(UTC),
-        provider=ctx.provider_name,
-        latency_ms=ctx.elapsed_ms,
-        expiration_selection=_expiration_selection(ctx.contracts, contracts, filters.expiration_mode),
-        strike_range_pct=filters.strike_range_pct,
-        rows=rows,
-        summary=summary,
-        dte0_summary=dte0_summary,
-        key_levels=levels,
-        expected_move=expected_move,
-        gamma_condition=_gamma_condition(
-            summary, ctx.spot, levels["gamma_flip"].price
-        ),
-        expiration_contributions=_expiration_contributions(contracts, ctx.spot, ctx.convention),
-        freshness=freshness,
-        previous_close=underlying.previous_close,
-        day_open=underlying.open,
-        sign_convention=ctx.convention,
-        methodology={
-            "gex": "Gamma × OI × multiplier × spot² × 0.01, signed by configured convention.",
-            "dex": "Assumed dealer DEX = raw contract DEX × configured call/put position sign. Raw DEX = signed option delta × OI × multiplier × spot; both are returned separately.",
-            "vanna": "Black-Scholes-Merton dDelta/dVol × OI × multiplier × spot × 0.01.",
-            "charm": "Black-Scholes-Merton dDelta/dTime × OI × multiplier × spot / 365.",
-            "net_oi": "Call open interest minus put open interest; both legs are also reported.",
-            "aggregation": "Exposure is calculated per contract first, then summed by strike.",
-            "rates": f"RiskFreeRateProvider(env)={get_risk_free_rate():g}; dividend yield={get_settings().dividend_yield:g}.",
+    return {
+        "symbol": req.symbol.upper(),
+        "spot": spot,
+        "timestamp": datetime.now(UTC).isoformat(),
+        "provider": ctx.provider_name,
+        "latencyMs": round(ctx.elapsed_ms, 2),
+        "calculationMs": round((time.perf_counter() - started) * 1000, 2),
+        "signConvention": ctx.convention,
+        "exerciseStyle": exercise_style(req.symbol),
+        "rateSource": rates.source(),
+        "riskFreeRate": rates.rate(),
+        "dividendYield": rates.dividend_yield(req.symbol),
+
+        "expirationSelection": {
+            "mode": req.expiration_mode,
+            "maxDte": req.resolved_max_dte(),
+            "expirations": [e.isoformat() for e in (req.expirations or [])],
+            "strikeRangePct": band,
+            "include0dte": req.include_0dte,
+            "contractsInScope": len(ctx.contracts),
+            "strikesInScope": len(all_rows),
+            "strikesVisible": len(rows),
         },
-        disclaimer=analytics.MODEL_DISCLAIMER,
-        demo_banner=analytics.demo_banner(),
-    )
+
+        "rows": rows,
+
+        "summary": {
+            "netGex": totals.net_gex,
+            "callGex": totals.call_gex,
+            "putGex": totals.put_gex,
+            "absoluteGex": totals.absolute_gex,
+            "netDex": totals.net_dex,
+            "netVanna": totals.net_vanna,
+            "netCharm": totals.net_charm,
+            "totalOi": totals.call_oi + totals.put_oi,
+            "callOi": totals.call_oi,
+            "putOi": totals.put_oi,
+            "callVolume": totals.call_volume,
+            "putVolume": totals.put_volume,
+            "putCallOiRatio": (totals.put_oi / totals.call_oi) if totals.call_oi else None,
+            "putCallVolumeRatio": (
+                totals.put_volume / totals.call_volume if totals.call_volume else None
+            ),
+            "contractCount": totals.contract_count,
+        },
+
+        "dte0": {
+            "available": bool(dte0_contracts),
+            "expiration": (
+                min(c.expiration for c in dte0_contracts).isoformat()
+                if dte0_contracts else None
+            ),
+            "netGex": dte0.net_gex,
+            "callGex": dte0.call_gex,
+            "putGex": dte0.put_gex,
+            "callOi": dte0.call_oi,
+            "putOi": dte0.put_oi,
+            "callVolume": dte0.call_volume,
+            "putVolume": dte0.put_volume,
+            "shareOfAbsoluteGex": (
+                round(dte0.absolute_gex / totals.absolute_gex * 100.0, 2)
+                if totals.absolute_gex else None
+            ),
+        },
+
+        "keyLevels": {
+            "spot": spot,
+            "gammaFlip": _level(key_levels.get("gamma_flip")),
+            "callWall": _level(key_levels.get("call_wall")),
+            "putWall": _level(key_levels.get("put_wall")),
+            "largestCallGamma": _level(key_levels.get("largest_call_gamma")),
+            "largestPutGamma": _level(key_levels.get("largest_put_gamma")),
+            "largestCallOi": _level(key_levels.get("largest_call_oi")),
+            "largestPutOi": _level(key_levels.get("largest_put_oi")),
+            "expectedMoveHigh": em.upper if em else None,
+            "expectedMoveLow": em.lower if em else None,
+            "previousClose": underlying.previous_close,
+            "dayOpen": underlying.open,
+            "dayHigh": underlying.high,
+            "dayLow": underlying.low,
+            # Every crossing of the modelled profile, not just the central one.
+            "lowerGammaTransition": max(lower) if lower else None,
+            "upperGammaTransition": min(upper) if upper else None,
+            "allGammaTransitions": crossings,
+        },
+
+        "expectedMove": _expected_move(em),
+        "gammaCondition": condition,
+        "expirationContributions": _expiration_contributions(ctx),
+        "oiQuartiles": _quartiles(visible),
+
+        "freshness": {
+            "status": freshness.status.value,
+            "asOf": freshness.as_of.isoformat() if freshness.as_of else None,
+            "source": freshness.source,
+            "note": freshness.note,
+            "underlyingStatus": underlying.delay_status.value,
+            "openInterestAsOf": oi_ts.isoformat() if oi_ts else None,
+            "greeksAsOf": (
+                ctx.chain.freshness.as_of.isoformat() if ctx.chain.freshness.as_of else None
+            ),
+        },
+        "quality": ctx.quality,
+        "disclaimer": analytics.MODEL_DISCLAIMER,
+        "demoBanner": analytics.demo_banner(),
+    }
+
+
+async def get_ladder(req: LadderRequest) -> dict:
+    ctx = await analytics.build_context(req.to_chain_request())
+    return build_ladder(req, ctx)

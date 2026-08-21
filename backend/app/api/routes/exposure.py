@@ -1,65 +1,73 @@
-"""Exposure Ladder API."""
+"""Exposure Ladder endpoint - per-strike delta, gamma, vanna, charm, OI and volume."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 
 from app.api.deps import parse_expirations, provider_http_error
-from app.exposure_models import ExpirationMode, ExposureLadderResponse
-from app.services import analytics, exposure_ladder
-from app.services.analytics import ChainRequest
+from app.services.exposure_ladder import (
+    DEFAULT_STRIKE_RANGE_PCT,
+    EXPIRATION_MODES,
+    STRIKE_RANGE_PRESETS,
+    LadderRequest,
+    get_ladder,
+)
 
 router = APIRouter(prefix="/exposure", tags=["exposure"])
 
 
-@router.get("/{symbol}/ladder", response_model=ExposureLadderResponse)
-async def exposure_ladder_endpoint(
+@router.get("/modes")
+async def ladder_modes() -> dict:
+    """Filter options the screen offers, so the UI does not hard-code them."""
+    return {
+        "expirationModes": [
+            {"value": "0dte", "label": "0DTE", "maxDte": EXPIRATION_MODES["0dte"]},
+            {"value": "1dte", "label": "1DTE", "maxDte": EXPIRATION_MODES["1dte"]},
+            {"value": "weekly", "label": "7DTE", "maxDte": EXPIRATION_MODES["weekly"]},
+            {"value": "monthly", "label": "30DTE", "maxDte": EXPIRATION_MODES["monthly"]},
+            {"value": "all", "label": "All", "maxDte": None},
+            {"value": "single", "label": "Single expiry", "maxDte": None},
+            {"value": "custom", "label": "Custom", "maxDte": None},
+        ],
+        "strikeRangePresets": STRIKE_RANGE_PRESETS,
+        "defaultStrikeRangePct": DEFAULT_STRIKE_RANGE_PCT,
+        "metrics": ["gex", "dex", "vanna", "charm", "oi", "volume", "all"],
+        "views": ["compact", "advanced"],
+    }
+
+
+@router.get("/{symbol}/ladder")
+async def exposure_ladder(
     symbol: str,
-    expiration_mode: ExpirationMode = Query(ExpirationMode.ALL, alias="expirationMode"),
+    expirationMode: str = Query("all", pattern="^(0dte|1dte|weekly|monthly|all|single|custom)$"),
     expiration: str | None = Query(
-        None, description="One or more comma-separated YYYY-MM-DD expirations"
+        None, description="Comma separated YYYY-MM-DD. Required for mode=single."
     ),
-    max_dte: float | None = Query(None, alias="maxDte", ge=0),
-    strike_range: float | None = Query(3.0, alias="strikeRange", ge=0, le=100),
-    include_0dte: bool = Query(True, alias="include0dte"),
-    metric: str = Query("all", pattern="^(gex|dex|vanna|charm|oi|volume|all)$"),
+    maxDte: float | None = Query(None, ge=0, description="Overrides the mode window"),
+    strikeRange: float | None = Query(
+        DEFAULT_STRIKE_RANGE_PCT, ge=0.1, le=100,
+        description="Percent band around spot; omit for all strikes",
+    ),
+    include0dte: bool = Query(True),
     convention: str | None = Query(None),
     provider: str | None = Query(None),
-) -> ExposureLadderResponse:
-    """Return a contract-first, strike-aggregated exposure matrix.
+) -> dict:
+    """Per-strike exposure plus the key levels drawn over the ladder.
 
-    ``metric`` is accepted as shareable UI state; the backend always returns every
-    metric so changing columns never causes another provider request.
+    Exposure is summed from per-contract values; greeks are never averaged and
+    multiplied by aggregate open interest.
     """
-    del metric
-    expirations = parse_expirations(expiration)
-    if expiration_mode in (
-        ExpirationMode.CUSTOM,
-        ExpirationMode.SINGLE,
-        ExpirationMode.MULTIPLE,
-    ) and not expirations:
-        raise HTTPException(422, "expiration is required for this expirationMode")
-
+    req = LadderRequest(
+        symbol=symbol.upper(),
+        expiration_mode=expirationMode,
+        expirations=parse_expirations(expiration),
+        max_dte=maxDte,
+        strike_range_pct=strikeRange,
+        include_0dte=include0dte,
+        convention=convention,
+        provider=provider,
+    )
     try:
-        ctx = await analytics.build_context(
-            ChainRequest(
-                symbol=symbol.upper(),
-                include_0dte=True,
-                convention=convention,
-                provider=provider,
-            )
-        )
-        return exposure_ladder.build_ladder(
-            ctx,
-            exposure_ladder.LadderFilters(
-                expiration_mode=expiration_mode,
-                expirations=expirations or [],
-                max_dte=max_dte,
-                strike_range_pct=None if strike_range == 0 else strike_range,
-                include_0dte=include_0dte,
-            ),
-        )
-    except HTTPException:
-        raise
+        return await get_ladder(req)
     except Exception as exc:
         raise provider_http_error(exc) from exc

@@ -39,7 +39,7 @@ d:\Gex
 │   │   ├── core/config.py       Env-driven settings (all secrets server-side)
 │   │   ├── providers/           MarketDataProvider adapters
 │   │   │   ├── base.py          ABC + retry, backoff, circuit breaker, dedup
-│   │   │   ├── massive.py       Primary provider (REST + WebSocket)
+│   │   │   ├── massive.py       Primary provider (Polygon.io API, REST + WebSocket)
 │   │   │   ├── tradier.py       Fallback provider
 │   │   │   ├── orats.py         Optional IV analytics
 │   │   │   ├── demo.py          Synthetic data, always labelled DEMO
@@ -58,7 +58,7 @@ d:\Gex
 │   │   │   └── alerts.py        In-app alert rule engine
 │   │   ├── api/routes/          REST + WebSocket
 │   │   └── db/schema.sql        PostgreSQL schema
-│   └── tests/                   142 tests
+│   └── tests/                   161 tests
 └── frontend/                    Next.js 16 · TypeScript strict · Tailwind
     ├── app/                     App router, theme bootstrap
     ├── components/              Panels + charts (ECharts, lightweight-charts)
@@ -116,8 +116,9 @@ its only configuration value is the URL of this app's own API.
 | `DATA_PROVIDER` | `demo` | `massive` \| `tradier` \| `demo` |
 | `FALLBACK_PROVIDER` | `tradier` | Used when the primary has no credentials |
 | `MASSIVE_API_KEY` | — | Primary provider key |
-| `MASSIVE_BASE_URL` | `https://api.massive.dev/v1` | REST base |
-| `MASSIVE_WS_URL` | `wss://stream.massive.dev/v1` | WebSocket base |
+| `MASSIVE_BASE_URL` | `https://api.massive.com` | REST base (`api.polygon.io` also works) |
+| `MASSIVE_WS_URL` | `wss://socket.massive.com` | WebSocket base |
+| `MASSIVE_REALTIME` | `false` | Set `true` **only** on a plan with real-time options; otherwise data is reported as 15-minute delayed |
 | `TRADIER_API_KEY` | — | Fallback provider key |
 | `TRADIER_BASE_URL` | `https://api.tradier.com/v1` | Use the sandbox URL for sandbox tokens |
 | `ORATS_API_KEY` | — | Optional: IV rank, percentile, historical IV |
@@ -305,7 +306,7 @@ tokens are treated as 15-minute delayed. Demo data is always `DEMO`.
 
 ```bash
 cd backend
-.venv\Scripts\python.exe -m pytest -q          # 142 tests
+.venv\Scripts\python.exe -m pytest -q          # 161 tests
 .venv\Scripts\python.exe -m ruff check .       # lint
 .venv\Scripts\python.exe -m mypy app           # types
 
@@ -351,6 +352,25 @@ Tables: `symbols`, `underlying_snapshots`, `option_chain_snapshots`, `option_con
 - **Frontend:** `npm run build && npm start`, or any Next.js host. Set `NEXT_PUBLIC_API_BASE`
   to the public backend URL.
 - Never expose provider keys to the browser, and never commit `.env`.
+
+---
+
+## Choosing a data provider
+
+**Massive** is Polygon.io under its current name (rebranded October 2025); `api.polygon.io`
+and `api.massive.com` serve the same API, and an existing Polygon key works unchanged.
+
+Two vendor details the adapter handles, and that any integration must:
+
+- **Index options need an `I:` ticker.** SPX is `I:SPX`, and indices use a different
+  snapshot endpoint from equities. Plain `SPX` returns nothing.
+- **The chain snapshot caps at 250 contracts per page** and paginates with `next_url`.
+  Reading only page one silently truncates the chain and understates every exposure figure.
+
+`MASSIVE_REALTIME` is a declaration, not a probe: the API does not flag whether a response
+is delayed, so the app reports `DELAYED 15M` until you state otherwise. Setting it `true`
+on a delayed plan would label 15-minute data as `LIVE`, which is the one thing this app is
+built not to do.
 
 ---
 

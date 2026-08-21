@@ -169,6 +169,14 @@ class StrikeGex(BaseModel):
     net_charm: float = 0.0
     call_vgex: float = 0.0
     put_vgex: float = 0.0
+    # Split legs, so the ladder can show what each side contributes.
+    call_vanna: float = 0.0
+    put_vanna: float = 0.0
+    call_charm: float = 0.0
+    put_charm: float = 0.0
+    call_iv: float | None = None
+    put_iv: float | None = None
+    contract_count: int = 0
 
 
 class ExpiryGex(BaseModel):

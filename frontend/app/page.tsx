@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-import { API_BASE, chainParams } from '@/lib/api';
+import { API_BASE, STATIC_DEMO, chainParams, demoSymbols } from '@/lib/api';
 import { formatNumber, formatPrice } from '@/lib/format';
 import { useApi, usePanel, useSettings, useSymbolStream } from '@/lib/hooks';
 import type {
@@ -37,8 +37,17 @@ import { TopNav } from '@/components/TopNav';
 import { OpportunityPanel } from '@/components/OpportunityPanel';
 import { EmptyBlock, ErrorBlock, LoadingBlock, Panel, SegmentedControl } from '@/components/ui';
 
-const QUICK_SYMBOLS = ['SPX', 'SPY', 'QQQ', 'NDX', 'IWM', 'DIA', 'NVDA', 'TSLA', 'AAPL', 'AMD', 'MSFT', 'AMZN', 'META'];
-const WATCHLIST = ['SPX', 'SPY', 'QQQ', 'NVDA', 'TSLA'];
+const ALL_SYMBOLS = ['SPX', 'SPY', 'QQQ', 'NDX', 'IWM', 'DIA', 'NVDA', 'TSLA', 'AAPL', 'AMD', 'MSFT', 'AMZN', 'META'];
+const ALL_WATCHLIST = ['SPX', 'SPY', 'QQQ', 'NVDA', 'TSLA'];
+
+// The static demo ships captured fixtures. Offering a symbol it does not hold
+// would put an unavailable panel behind every click, so the switcher is narrowed
+// to what was actually captured rather than falling back to another symbol.
+const CAPTURED = STATIC_DEMO ? demoSymbols() : [];
+const QUICK_SYMBOLS = STATIC_DEMO && CAPTURED.length ? CAPTURED : ALL_SYMBOLS;
+const WATCHLIST = STATIC_DEMO && CAPTURED.length
+  ? ALL_WATCHLIST.filter((s) => CAPTURED.includes(s))
+  : ALL_WATCHLIST;
 const INTERVALS = ['1m', '5m', '15m', '30m', '1h', '1D'] as const;
 
 export default function DashboardPage() {

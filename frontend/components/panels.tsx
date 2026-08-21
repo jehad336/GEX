@@ -111,7 +111,6 @@ export function Dte0Panel({
     </Panel>
   );
 }
-
 function Metric({
   label,
   value,
@@ -255,7 +254,6 @@ export function LevelsPanel({
     </Panel>
   );
 }
-
 /* ------------------------------------------------------------------ by expiry */
 
 export function ByExpiryPanel({
@@ -901,3 +899,4 @@ export function ExposureDetailPanel({
     </Panel>
   );
 }
+
