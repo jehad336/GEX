@@ -4,6 +4,9 @@
  */
 
 import type { DashboardSettings } from './types';
+import demoFixtures from './demoFixtures.json';
+
+export const STATIC_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:8000';
@@ -57,6 +60,7 @@ function describe(status: number, body: ErrorBody | null): ApiError {
 }
 
 export async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
+  if (STATIC_DEMO) return staticDemoResponse<T>(path);
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${path}`, {
@@ -81,6 +85,37 @@ export async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> 
     throw describe(res.status, body);
   }
   return (await res.json()) as T;
+}
+
+function staticDemoResponse<T>(path: string): T {
+  const pathname = path.split('?', 1)[0] ?? path;
+  const symbolMatch = pathname.match(/^\/api\/(?:gex|market|options|history)\/([^/]+)/);
+  const requestedSymbol = symbolMatch?.[1]?.toUpperCase() ?? null;
+  const fixturePath = requestedSymbol
+    ? pathname.replace(`/${requestedSymbol}`, '/SPY')
+    : pathname;
+  const fixtures = demoFixtures as Record<string, unknown>;
+  const source = fixtures[fixturePath]
+    ?? (pathname === '/api/symbols/search' ? fixtures['/api/symbols/search'] : undefined);
+  if (source === undefined) {
+    throw new ApiError(`Demo fixture unavailable for ${pathname}`, 404, 'demo');
+  }
+  const cloned = JSON.parse(JSON.stringify(source)) as unknown;
+  if (!requestedSymbol || requestedSymbol === 'SPY') return cloned as T;
+  return replaceDemoSymbol(cloned, requestedSymbol) as T;
+}
+
+function replaceDemoSymbol(value: unknown, symbol: string): unknown {
+  if (Array.isArray(value)) return value.map((item) => replaceDemoSymbol(item, symbol));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        key === 'symbol' && item === 'SPY' ? symbol : replaceDemoSymbol(item, symbol),
+      ]),
+    );
+  }
+  return value;
 }
 
 export async function apiPost<T>(path: string, payload: unknown): Promise<T> {
