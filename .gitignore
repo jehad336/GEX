@@ -1,0 +1,38 @@
+# env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+htmlcov/
+.coverage
+
+# node
+node_modules/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+.eslintcache
+
+# os / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# data
+*.db
+*.sqlite3
+data/snapshots/
+logs/

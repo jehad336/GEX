@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Dark is the default for a trading surface: it is where the eye spends the
+   session. Light mode is a full peer, not an afterthought. */
+:root {
+  --bg: 9 11 16;
+  --surface: 15 18 26;
+  --raised: 22 26 36;
+  --line: 38 44 58;
+  --ink: 232 236 245;
+  --muted: 148 160 180;
+  --faint: 96 108 128;
+  --pos: 34 197 126;
+  --neg: 244 84 84;
+  --warn: 234 179 8;
+  --accent: 96 165 250;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.light {
+  --bg: 246 247 250;
+  --surface: 255 255 255;
+  --raised: 249 250 252;
+  --line: 222 226 234;
+  --ink: 20 26 38;
+  --muted: 90 100 118;
+  --faint: 138 148 166;
+  --pos: 14 145 90;
+  --neg: 202 44 44;
+  --warn: 176 128 8;
+  --accent: 37 99 235;
+}
+
+html,
+body {
+  background: rgb(var(--bg));
+  color: rgb(var(--ink));
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Numbers in a trading grid must align vertically to be scannable. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--line));
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--faint));
+}
+
+@layer components {
+  .panel {
+    @apply rounded-lg border border-line bg-surface;
+  }
+  .panel-head {
+    @apply flex items-center justify-between gap-3 border-b border-line px-4 py-2.5;
+  }
+  .panel-title {
+    @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-muted;
+  }
+  .stat-label {
+    @apply text-[10px] font-medium uppercase tracking-[0.11em] text-faint;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wider;
+  }
+  .btn {
+    @apply rounded border border-line bg-raised px-2.5 py-1 text-xs font-medium text-muted transition-colors hover:border-faint hover:text-ink;
+  }
+  .btn-active {
+    @apply border-accent/60 bg-accent/10 text-accent;
+  }
+  .grid-table {
+    @apply w-full border-collapse text-xs;
+  }
+  .grid-table th {
+    @apply sticky top-0 z-10 bg-surface px-2.5 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wider text-faint;
+  }
+  .grid-table td {
+    @apply whitespace-nowrap border-t border-line/60 px-2.5 py-1.5;
+  }
+}
+
+/* Respect users who have asked for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

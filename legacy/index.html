@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gamma Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand-wrap">
+          <div class="brand-mark">G</div>
+          <div>
+            <p class="eyebrow">Workspace</p>
+            <h1>Gamma</h1>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <a class="nav-item active" href="#">
+            <span>Overview</span>
+            <span class="nav-pill">12</span>
+          </a>
+          <a class="nav-item" href="#">Analytics</a>
+          <a class="nav-item" href="#">Reports</a>
+          <a class="nav-item" href="#">Revenue</a>
+          <a class="nav-item" href="#">Customers</a>
+          <a class="nav-item" href="#">Settings</a>
+        </nav>
+
+        <div class="mini-card">
+          <p class="eyebrow">Quarterly target</p>
+          <h3>82.4%</h3>
+          <div class="progress">
+            <span style="width: 82.4%"></span>
+          </div>
+          <small>+12.8% vs last quarter</small>
+        </div>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Good morning</p>
+            <h2>Executive dashboard</h2>
+          </div>
+          <div class="topbar-actions">
+            <button class="ghost-btn">Export</button>
+            <button class="primary-btn">New report</button>
+          </div>
+        </header>
+
+        <section class="kpi-grid">
+          <article class="kpi-card accent-blue">
+            <div class="card-head">
+              <span class="label">Revenue</span>
+              <span class="trend positive">+8.2%</span>
+            </div>
+            <h3>$184.2K</h3>
+            <p>Compared to $170.1K last month</p>
+          </article>
+
+          <article class="kpi-card accent-violet">
+            <div class="card-head">
+              <span class="label">Orders</span>
+              <span class="trend positive">+3.7%</span>
+            </div>
+            <h3>4,832</h3>
+            <p>Across 18 active campaigns</p>
+          </article>
+
+          <article class="kpi-card accent-green">
+            <div class="card-head">
+              <span class="label">Conversion</span>
+              <span class="trend positive">+1.9%</span>
+            </div>
+            <h3>6.8%</h3>
+            <p>Visitor-to-sale rate improving</p>
+          </article>
+
+          <article class="kpi-card accent-gold">
+            <div class="card-head">
+              <span class="label">Retention</span>
+              <span class="trend negative">-0.4%</span>
+            </div>
+            <h3>91.3%</h3>
+            <p>Moving toward the yearly goal</p>
+          </article>
+        </section>
+
+        <section class="content-grid">
+          <article class="panel chart-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Performance</p>
+                <h3>Revenue pipeline</h3>
+              </div>
+              <div class="segmented-control">
+                <button class="seg active">7D</button>
+                <button class="seg">30D</button>
+                <button class="seg">90D</button>
+              </div>
+            </div>
+
+            <svg viewBox="0 0 520 240" class="chart" aria-label="Revenue trend chart">
+              <defs>
+                <linearGradient id="areaFill" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stop-color="#7c5cff" stop-opacity="0.35"/>
+                  <stop offset="100%" stop-color="#7c5cff" stop-opacity="0.02"/>
+                </linearGradient>
+              </defs>
+
+              <g class="grid-lines">
+                <line x1="0" x2="520" y1="40" y2="40"></line>
+                <line x1="0" x2="520" y1="95" y2="95"></line>
+                <line x1="0" x2="520" y1="150" y2="150"></line>
+                <line x1="0" x2="520" y1="205" y2="205"></line>
+              </g>
+
+              <path
+                class="area"
+                d="M 0 170 C 60 150, 90 120, 140 128 S 210 95, 260 118 S 340 58, 390 72 S 470 36, 520 52 L 520 240 L 0 240 Z"
+              ></path>
+              <path
+                class="line"
+                d="M 0 170 C 60 150, 90 120, 140 128 S 210 95, 260 118 S 340 58, 390 72 S 470 36, 520 52"
+              ></path>
+
+              <g class="chart-points">
+                <circle cx="140" cy="128" r="5"></circle>
+                <circle cx="260" cy="118" r="5"></circle>
+                <circle cx="390" cy="72" r="5"></circle>
+                <circle cx="520" cy="52" r="5"></circle>
+              </g>
+            </svg>
+
+            <div class="chart-axis">
+              <span>Mon</span>
+              <span>Tue</span>
+              <span>Wed</span>
+              <span>Thu</span>
+              <span>Fri</span>
+              <span>Sat</span>
+              <span>Sun</span>
+            </div>
+          </article>
+
+          <article class="panel traffic-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Traffic source</p>
+                <h3>Acquisition mix</h3>
+              </div>
+            </div>
+
+            <div class="donut-wrap">
+              <div class="donut-chart">
+                <div class="donut-inner">
+                  <strong>74%</strong>
+                  <span>Organic</span>
+                </div>
+              </div>
+            </div>
+
+            <ul class="legend">
+              <li><span class="dot blue"></span>Organic search <strong>74%</strong></li>
+              <li><span class="dot purple"></span>Paid ads <strong>18%</strong></li>
+              <li><span class="dot green"></span>Referral <strong>8%</strong></li>
+            </ul>
+          </article>
+        </section>
+
+        <section class="bottom-grid">
+          <article class="panel table-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Pipeline</p>
+                <h3>Recent deals</h3>
+              </div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Company</th>
+                  <th>Stage</th>
+                  <th>Value</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Northstar</td>
+                  <td>Proposal</td>
+                  <td>$24.8K</td>
+                  <td><span class="state success">On track</span></td>
+                </tr>
+                <tr>
+                  <td>Summit Labs</td>
+                  <td>Discovery</td>
+                  <td>$18.2K</td>
+                  <td><span class="state pending">Review</span></td>
+                </tr>
+                <tr>
+                  <td>BluePeak</td>
+                  <td>Negotiation</td>
+                  <td>$42.5K</td>
+                  <td><span class="state warning">Risk</span></td>
+                </tr>
+                <tr>
+                  <td>Aster</td>
+                  <td>Closed</td>
+                  <td>$36.0K</td>
+                  <td><span class="state success">Won</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+
+          <article class="panel activity-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Today</p>
+                <h3>Activities</h3>
+              </div>
+            </div>
+
+            <ul class="activity-list">
+              <li>
+                <span class="activity-badge blue"></span>
+                <div>
+                  <strong>Campaign review</strong>
+                  <small>9:30 AM · Marketing</small>
+                </div>
+              </li>
+              <li>
+                <span class="activity-badge purple"></span>
+                <div>
+                  <strong>Sales sync</strong>
+                  <small>11:15 AM · Revenue</small>
+                </div>
+              </li>
+              <li>
+                <span class="activity-badge green"></span>
+                <div>
+                  <strong>Client onboarding</strong>
+                  <small>1:00 PM · Success</small>
+                </div>
+              </li>
+              <li>
+                <span class="activity-badge gold"></span>
+                <div>
+                  <strong>Board update</strong>
+                  <small>4:30 PM · Leadership</small>
+                </div>
+              </li>
+            </ul>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
