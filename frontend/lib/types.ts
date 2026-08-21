@@ -397,6 +397,211 @@ export interface HistoryPoint {
   atm_iv: number | null;
 }
 
+export interface OpportunityRecord {
+  id: number;
+  symbol: string;
+  option_symbol: string;
+  setup: string;
+  direction: 'call' | 'put';
+  score: number;
+  detected_at: string;
+  spot: number;
+  strike: number;
+  expiration: string;
+  dte: number;
+  bid: number | null;
+  ask: number | null;
+  mid: number | null;
+  iv: number | null;
+  delta: number | null;
+  gamma: number | null;
+  open_interest: number;
+  volume: number;
+  provider: string;
+  freshness: DelayStatus;
+  sign_convention: string;
+  gamma_flip: number | null;
+  target_level: number | null;
+  trigger: string;
+  invalidation: string;
+  reasons: string[];
+  score_components: Record<string, number>;
+  demo: boolean;
+  status: 'analytical_candidate';
+  disclaimer: string;
+}
+
+export interface OpportunityResponse {
+  symbol: string;
+  scanning: boolean;
+  last_scan_at: string | null;
+  created: OpportunityRecord[];
+  records: OpportunityRecord[];
+  minimum_score: number;
+  cooldown_minutes: number;
+  provider: string;
+  demo: boolean;
+  delivery: string;
+}
+
+export type ExpirationMode =
+  | '0dte'
+  | '1dte'
+  | 'le7'
+  | 'le30'
+  | 'monthly'
+  | 'all'
+  | 'custom'
+  | 'single'
+  | 'multiple';
+
+export interface LadderContract {
+  symbol: string;
+  expiration: string;
+  dte: number;
+  type: 'call' | 'put';
+  strike: number;
+  multiplier: number;
+  open_interest: number;
+  volume: number;
+  bid: number | null;
+  ask: number | null;
+  iv: number | null;
+  delta: number | null;
+  gamma: number | null;
+  gex: number;
+  dex: number;
+  raw_dex: number;
+  vanna_exposure: number;
+  charm_exposure: number;
+}
+
+export interface ExposureLadderRow {
+  strike: number;
+  distance: number;
+  distance_pct: number;
+  net_delta: number;
+  call_delta: number;
+  put_delta: number;
+  raw_net_delta: number;
+  raw_call_delta: number;
+  raw_put_delta: number;
+  net_gamma: number;
+  call_gamma: number;
+  put_gamma: number;
+  net_vanna: number;
+  call_vanna: number;
+  put_vanna: number;
+  net_charm: number;
+  call_charm: number;
+  put_charm: number;
+  net_oi: number;
+  total_oi: number;
+  call_oi: number;
+  put_oi: number;
+  net_volume: number;
+  total_volume: number;
+  call_volume: number;
+  put_volume: number;
+  iv: number | null;
+  absolute_gex: number;
+  contracts: LadderContract[];
+}
+
+export interface ExposureSummary {
+  net_gex: number;
+  call_gex: number;
+  put_gex: number;
+  absolute_gex: number;
+  net_dex: number;
+  call_dex: number;
+  put_dex: number;
+  raw_net_dex: number;
+  raw_call_dex: number;
+  raw_put_dex: number;
+  net_vanna: number;
+  net_charm: number;
+  total_oi: number;
+  call_oi: number;
+  put_oi: number;
+  total_volume: number;
+  call_volume: number;
+  put_volume: number;
+  put_call_oi_ratio: number | null;
+  put_call_volume_ratio: number | null;
+  contract_count: number;
+}
+
+export interface ExpirationContribution {
+  expiration: string;
+  dte: number;
+  call_gex: number;
+  put_gex: number;
+  net_gex: number;
+  absolute_gex: number;
+  total_oi: number;
+  share_of_absolute: number;
+}
+
+export interface ExpirationChoice {
+  expiration: string;
+  dte: number;
+  is_0dte: boolean;
+  is_monthly: boolean;
+  kind: string;
+  selected: boolean;
+}
+
+export interface ExposureLadderResponse {
+  symbol: string;
+  spot: number;
+  timestamp: string;
+  provider: string;
+  latency_ms: number;
+  expiration_selection: {
+    mode: ExpirationMode;
+    selected: string[];
+    available: ExpirationChoice[];
+  };
+  strike_range_pct: number | null;
+  rows: ExposureLadderRow[];
+  summary: ExposureSummary;
+  dte0_summary: ExposureSummary;
+  key_levels: Record<string, Level>;
+  expected_move: ExpectedMove | null;
+  gamma_condition: {
+    label: string;
+    gamma_regime: string;
+    positioning: string;
+    call_dominance_score: number;
+    near_flip: boolean;
+    flip_distance_pct: number | null;
+    flip_proximity_warning: boolean;
+    explanation: string;
+    methodology: string;
+  };
+  expiration_contributions: ExpirationContribution[];
+  freshness: {
+    underlying: DelayStatus;
+    quotes: DelayStatus;
+    trades: DelayStatus;
+    greeks_as_of: string | null;
+    quote_as_of: string | null;
+    trade_as_of: string | null;
+    greeks_source: string;
+    open_interest: DelayStatus;
+    oi_as_of: string | null;
+    excluded_contracts: number;
+    note: string;
+  };
+  previous_close: number | null;
+  day_open: number | null;
+  sign_convention: string;
+  methodology: Record<string, string>;
+  disclaimer: string;
+  demo_banner: DemoBanner | null;
+}
+
 export interface MarketStatus {
   state: 'PRE_MARKET' | 'OPEN' | 'AFTER_HOURS' | 'CLOSED';
   timezone: string;

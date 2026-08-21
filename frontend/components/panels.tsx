@@ -815,7 +815,14 @@ export function IntradayPanel({
       {error ? <ErrorBlock error={error} onRetry={() => mutate()} /> : null}
       {data && data.points.length < 2 ? <EmptyBlock message={data.note} /> : null}
       {data && data.points.length >= 2 ? (
-        <IntradayGexChart points={data.points} theme={theme} />
+        <div>
+          <IntradayGexChart points={data.points} theme={theme} />
+          {data.points.length < 5 ? (
+            <p className="px-3 pb-3 text-2xs text-faint">
+              Limited history: {data.count} captures. The trend becomes more meaningful after 5+ refreshes.
+            </p>
+          ) : null}
+        </div>
       ) : null}
     </Panel>
   );

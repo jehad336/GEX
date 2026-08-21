@@ -1,6 +1,7 @@
 'use client';
 
 import { clsx } from 'clsx';
+import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { apiGet } from '@/lib/api';
@@ -46,6 +47,7 @@ export function TopNav({
   lastUpdated,
   latencyMs,
   quickSymbols,
+  activeView = 'dashboard',
 }: {
   symbol: string;
   onSymbolChange: (s: string) => void;
@@ -55,6 +57,7 @@ export function TopNav({
   lastUpdated: string | null;
   latencyMs: number | null;
   quickSymbols: string[];
+  activeView?: 'dashboard' | 'exposure';
 }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
@@ -144,6 +147,42 @@ export function TopNav({
             <div className="text-2xs text-faint">Options positioning</div>
           </div>
         </div>
+
+        <nav className="flex max-w-full items-center overflow-x-auto whitespace-nowrap rounded border border-line bg-raised p-0.5" aria-label="Primary screens">
+          {[
+            ['Overview', 'market-overview'],
+            ['Chart', 'chart'],
+            ['Gamma Profile', 'gamma-profile'],
+            ['0DTE', 'zero-dte'],
+            ['Flow', 'flow'],
+            ['Volatility', 'volatility'],
+            ['History', 'history'],
+            ['Watchlist', 'watchlist'],
+            ['Opportunities', 'opportunities'],
+          ].map(([label, anchor]) => (
+            <Link
+              key={anchor}
+              href={`/?symbol=${encodeURIComponent(symbol)}#${anchor}`}
+              className={clsx(
+                'rounded px-2 py-1 text-2xs font-semibold uppercase tracking-wider',
+                activeView === 'dashboard' && anchor === 'market-overview'
+                  ? 'bg-accent/15 text-accent'
+                  : 'text-muted hover:text-ink',
+              )}
+            >
+              {label}
+            </Link>
+          ))}
+          <Link
+            href={`/exposure?symbol=${encodeURIComponent(symbol)}`}
+            className={clsx(
+              'rounded px-2 py-1 text-2xs font-semibold uppercase tracking-wider',
+              activeView === 'exposure' ? 'bg-accent/15 text-accent' : 'text-muted hover:text-ink',
+            )}
+          >
+            Exposure Ladder
+          </Link>
+        </nav>
 
         {/* search */}
         <div ref={boxRef} className="relative w-56">

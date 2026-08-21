@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import useSWR, { type SWRConfiguration } from 'swr';
 
-import { ApiError, apiGet, chainParams, wsUrl } from './api';
+import { ApiError, STATIC_DEMO, apiGet, chainParams, wsUrl } from './api';
 import {
   DEFAULT_SETTINGS,
   getClientServerSnapshot,
@@ -90,7 +90,7 @@ export function useSymbolStream(symbol: string, enabled: boolean) {
   const retryRef = useRef(0);
 
   useEffect(() => {
-    if (!enabled || !symbol) return;
+    if (STATIC_DEMO || !enabled || !symbol) return;
 
     // Owned by THIS effect run, not shared across runs. A shared ref would be
     // reset by the next effect before the old socket's async onclose fired, so

@@ -24,7 +24,7 @@ export function Info({ term, className }: { term: keyof typeof GLOSSARY; classNa
       </button>
       <span
         role="tooltip"
-        className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-72 -translate-x-1/2 rounded-md border border-line bg-raised p-3 text-xs leading-relaxed text-ink opacity-0 shadow-xl transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+        className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 hidden w-72 -translate-x-1/2 rounded-md border border-line bg-raised p-3 text-xs leading-relaxed text-ink shadow-xl group-hover:block group-focus-within:block"
       >
         <span className="mb-1 block font-semibold">{entry.title}</span>
         <span className="block text-muted">{entry.body}</span>

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 import { API_BASE, chainParams } from '@/lib/api';
 import { formatNumber, formatPrice } from '@/lib/format';
@@ -33,19 +34,35 @@ import {
 import { SettingsDrawer } from '@/components/SettingsDrawer';
 import { SummaryBar } from '@/components/SummaryBar';
 import { TopNav } from '@/components/TopNav';
+import { OpportunityPanel } from '@/components/OpportunityPanel';
 import { EmptyBlock, ErrorBlock, LoadingBlock, Panel, SegmentedControl } from '@/components/ui';
 
 const QUICK_SYMBOLS = ['SPX', 'SPY', 'QQQ', 'NDX', 'IWM', 'DIA', 'NVDA', 'TSLA', 'AAPL', 'AMD', 'MSFT', 'AMZN', 'META'];
 const WATCHLIST = ['SPX', 'SPY', 'QQQ', 'NVDA', 'TSLA'];
 const INTERVALS = ['1m', '5m', '15m', '30m', '1h', '1D'] as const;
 
-export default function Dashboard() {
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<main className="p-6"><LoadingBlock rows={8} label="Loading dashboard" /></main>}>
+      <Dashboard />
+    </Suspense>
+  );
+}
+
+function Dashboard() {
+  const search = useSearchParams();
+  const router = useRouter();
   const { settings, update, loaded } = useSettings();
-  const [symbol, setSymbol] = useState('SPY');
+  const symbol = (search.get('symbol') || 'SPY').toUpperCase();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [interval, setInterval] = useState<(typeof INTERVALS)[number]>('5m');
   const [heatmapMetric, setHeatmapMetric] = useState<'net' | 'call' | 'put'>('net');
   const [strikeMetric, setStrikeMetric] = useState<'gex' | 'dex' | 'vanna' | 'charm'>('gex');
+  const selectSymbol = useCallback((nextSymbol: string) => {
+    const params = new URLSearchParams(search.toString());
+    params.set('symbol', nextSymbol.toUpperCase());
+    router.replace(`/?${params.toString()}`, { scroll: false });
+  }, [router, search]);
 
   // Theme is applied on <html> so both Tailwind and the chart colour readers see it.
   useEffect(() => {
@@ -112,13 +129,14 @@ export default function Dashboard() {
     <div className="min-h-screen">
       <TopNav
         symbol={symbol}
-        onSymbolChange={setSymbol}
+        onSymbolChange={selectSymbol}
         settings={settings}
         onOpenSettings={() => setSettingsOpen(true)}
         streamState={stream.state}
         lastUpdated={snapshot?.computed_at ?? null}
         latencyMs={snapshot?.calculation_ms ?? null}
         quickSymbols={QUICK_SYMBOLS}
+        activeView="dashboard"
       />
 
       {demoBanner ? (
@@ -129,7 +147,7 @@ export default function Dashboard() {
         </div>
       ) : null}
 
-      <main className="mx-auto max-w-[1920px] space-y-4 p-4">
+      <main id="market-overview" className="mx-auto max-w-[1920px] scroll-mt-24 space-y-4 p-4">
         {/* ---- summary ---- */}
         {snapshotQuery.error && !snapshot ? (
           <div className="panel p-4">
@@ -143,8 +161,12 @@ export default function Dashboard() {
           </div>
         )}
 
+        <section id="opportunities" className="scroll-mt-24">
+          <OpportunityPanel symbol={symbol} settings={settings} />
+        </section>
+
         {/* ---- price chart + main GEX ---- */}
-        <div className="grid gap-4 xl:grid-cols-[1.15fr_1fr]">
+        <section id="chart" className="grid scroll-mt-24 gap-4 xl:grid-cols-[1.15fr_1fr]">
           <Panel
             title="Price & Options Levels"
             bodyClassName="p-2"
@@ -227,10 +249,10 @@ export default function Dashboard() {
               </div>
             )}
           </Panel>
-        </div>
+        </section>
 
         {/* ---- gamma profile + levels ---- */}
-        <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+        <section id="gamma-profile" className="grid scroll-mt-24 gap-4 xl:grid-cols-[1fr_1fr]">
           <Panel
             title="Gamma Exposure Profile"
             term="gamma_flip"
@@ -279,10 +301,10 @@ export default function Dashboard() {
           </Panel>
 
           <LevelsPanel symbol={symbol} settings={settings} />
-        </div>
+        </section>
 
         {/* ---- heatmap ---- */}
-        <Panel
+        <section id="heatmap" className="scroll-mt-24"><Panel
           title="Strike × Expiration Gamma Heatmap"
           bodyClassName="p-2"
           right={
@@ -311,10 +333,10 @@ export default function Dashboard() {
               <LoadingBlock rows={8} />
             </div>
           )}
-        </Panel>
+        </Panel></section>
 
         {/* ---- 0DTE + exposures ---- */}
-        <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
+        <section id="zero-dte" className="grid scroll-mt-24 gap-4 xl:grid-cols-[1.4fr_1fr]">
           <Dte0Panel symbol={symbol} settings={settings} />
           {snapshot ? (
             <ExposureDetailPanel snapshot={snapshot} settings={settings} />
@@ -323,7 +345,7 @@ export default function Dashboard() {
               <LoadingBlock rows={4} />
             </Panel>
           )}
-        </div>
+        </section>
 
         {/* ---- expiry + OI/volume ---- */}
         <div className="grid gap-4 xl:grid-cols-2">
@@ -337,21 +359,21 @@ export default function Dashboard() {
         </div>
 
         {/* ---- flow ---- */}
-        <FlowPanel symbol={symbol} settings={settings} />
+        <section id="flow" className="scroll-mt-24"><FlowPanel symbol={symbol} settings={settings} /></section>
 
         {/* ---- volatility + intraday ---- */}
-        <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
+        <section id="volatility" className="grid scroll-mt-24 gap-4 xl:grid-cols-[1.3fr_1fr]">
           <IvPanel symbol={symbol} settings={settings} theme={theme} />
           <div className="space-y-4">
-            <IntradayPanel symbol={symbol} settings={settings} theme={theme} />
-            <WatchlistPanel
+            <div id="history" className="scroll-mt-24"><IntradayPanel symbol={symbol} settings={settings} theme={theme} /></div>
+            <div id="watchlist" className="scroll-mt-24"><WatchlistPanel
               symbols={WATCHLIST}
               active={symbol}
-              onSelect={setSymbol}
+              onSelect={selectSymbol}
               settings={settings}
-            />
+            /></div>
           </div>
-        </div>
+        </section>
 
         {/* ---- underlying detail ---- */}
         {underlying ? (

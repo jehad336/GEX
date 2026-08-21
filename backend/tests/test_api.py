@@ -125,6 +125,51 @@ def test_heatmap_is_aggregated_server_side(client):
         assert 0 <= cell["y"] < len(body["strikes"])
 
 
+def test_exposure_ladder_endpoint_is_typed_and_filtered(client):
+    response = client.get(
+        "/api/exposure/SPY/ladder",
+        params={"expirationMode": "0dte", "strikeRange": 3},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["symbol"] == "SPY"
+    assert body["expiration_selection"]["mode"] == "0dte"
+    assert body["rows"]
+    assert all(abs(row["distance_pct"]) <= 3 for row in body["rows"])
+    assert all(contract["dte"] < 1 for row in body["rows"] for contract in row["contracts"])
+    assert body["key_levels"]["gamma_flip"]["origin"] == "model_derived"
+    assert body["key_levels"]["spot"]["origin"] == "observed"
+    assert body["freshness"]["open_interest"] == "PREVIOUS_DAY_OI"
+    assert "greeks_source" in body["freshness"]
+    assert body["freshness"]["excluded_contracts"] >= 0
+    assert "raw_net_delta" in body["rows"][0]
+    assert "raw_dex" in body["rows"][0]["contracts"][0]
+    assert body["demo_banner"]["demo"] is True
+
+
+def test_exposure_ladder_requires_expiration_for_custom_mode(client):
+    response = client.get(
+        "/api/exposure/SPY/ladder", params={"expirationMode": "custom"}
+    )
+    assert response.status_code == 422
+
+
+def test_opportunity_scan_is_typed_and_never_claims_to_place_an_order(client):
+    response = client.get("/api/opportunities/SPY")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["symbol"] == "SPY"
+    assert body["scanning"] is True
+    assert body["minimum_score"] == 65
+    assert body["demo"] is True
+    assert "no order" in body["delivery"]
+    for row in body["records"]:
+        assert 65 <= row["score"] <= 100
+        assert row["status"] == "analytical_candidate"
+        assert row["option_symbol"]
+        assert row["reasons"]
+
+
 def test_option_chain_is_capped_by_limit(client):
     body = client.get("/api/options/SPY/chain", params={"max_dte": 30, "limit": 50}).json()
     assert body["returned"] <= 50

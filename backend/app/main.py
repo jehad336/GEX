@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import alerts, gex, history, market, options, stream
+from app.api.routes import alerts, exposure, gex, history, market, opportunities, options, stream
 from app.core.config import get_settings
 from app.providers.registry import shutdown_providers
 from app.services.cache import get_cache
@@ -102,7 +102,9 @@ async def health() -> dict:
 api_prefix = "/api"
 app.include_router(market.router, prefix=api_prefix)
 app.include_router(gex.router, prefix=api_prefix)
+app.include_router(exposure.router, prefix=api_prefix)
 app.include_router(options.router, prefix=api_prefix)
 app.include_router(history.router, prefix=api_prefix)
 app.include_router(alerts.router, prefix=api_prefix)
+app.include_router(opportunities.router, prefix=api_prefix)
 app.include_router(stream.router)

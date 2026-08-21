@@ -346,16 +346,26 @@ export function IntradayGexChart({
   const option = useMemo(() => {
     const c = colors;
     const times = points.map((p) => formatTime(p.captured_at));
+    const isSparse = points.length < 5;
 
     return {
       animation: false,
-      grid: { left: 62, right: 62, top: 26, bottom: 34 },
-      tooltip: { ...baseTooltip(c), trigger: 'axis' },
+      grid: { left: 70, right: 62, top: 56, bottom: 34 },
+      tooltip: {
+        ...baseTooltip(c),
+        trigger: 'axis',
+        axisPointer: { type: 'line', lineStyle: { color: c.muted, opacity: 0.45 } },
+      },
       legend: {
-        top: 0,
-        right: 6,
+        type: 'scroll',
+        top: 5,
+        left: 8,
+        right: 8,
         itemWidth: 10,
         itemHeight: 8,
+        itemGap: 14,
+        pageIconSize: 9,
+        pageTextStyle: { color: c.faint, fontSize: 9 },
         textStyle: { color: c.muted, fontSize: 10 },
       },
       xAxis: {
@@ -363,12 +373,20 @@ export function IntradayGexChart({
         data: times,
         axisLine: { lineStyle: { color: c.line } },
         axisTick: { show: false },
-        axisLabel: { color: c.faint, fontSize: 9, hideOverlap: true },
+        boundaryGap: isSparse,
+        axisLabel: {
+          color: c.faint,
+          fontSize: 9,
+          hideOverlap: true,
+          formatter: (value: string, index: number) =>
+            isSparse && index > 0 && index < times.length - 1 ? '' : value,
+        },
       },
       yAxis: [
         {
           type: 'value',
           name: 'Net GEX',
+          scale: true,
           nameTextStyle: { color: c.faint, fontSize: 9 },
           splitLine: { lineStyle: { color: c.line, opacity: 0.4 } },
           axisLabel: { color: c.faint, fontSize: 9, formatter: formatExposureAuto },
@@ -387,15 +405,17 @@ export function IntradayGexChart({
           name: 'Net GEX',
           type: 'line',
           data: points.map((p) => p.net_gex),
-          symbol: 'none',
+          symbol: isSparse ? 'circle' : 'none',
+          symbolSize: 5,
           lineStyle: { color: c.accent, width: 2 },
-          areaStyle: { color: c.accent, opacity: 0.1 },
+          areaStyle: isSparse ? undefined : { color: c.accent, opacity: 0.1 },
         },
         {
           name: '0DTE GEX',
           type: 'line',
           data: points.map((p) => p.dte0_net_gex),
-          symbol: 'none',
+          symbol: isSparse ? 'circle' : 'none',
+          symbolSize: 4,
           lineStyle: { color: c.warn, width: 1, type: 'dashed' },
         },
         {
@@ -403,7 +423,8 @@ export function IntradayGexChart({
           type: 'line',
           yAxisIndex: 1,
           data: points.map((p) => p.spot),
-          symbol: 'none',
+          symbol: isSparse ? 'circle' : 'none',
+          symbolSize: 4,
           lineStyle: { color: c.ink, width: 1 },
         },
         {

@@ -18,6 +18,7 @@ from app.providers.registry import get_provider
 from app.services import analytics
 from app.services.alerts import get_alert_engine
 from app.services.analytics import ChainRequest
+from app.services.opportunities import get_opportunity_scanner
 
 log = logging.getLogger("gex.stream")
 
@@ -72,6 +73,15 @@ class SymbolHub:
                     if events:
                         await self.broadcast(
                             {"type": "alerts", "data": [e.to_dict() for e in events]}
+                        )
+
+                    opportunities = get_opportunity_scanner().evaluate(snapshot, ctx)
+                    if opportunities:
+                        await self.broadcast(
+                            {
+                                "type": "opportunities",
+                                "data": [row.to_dict() for row in opportunities],
+                            }
                         )
 
                 counter += 1

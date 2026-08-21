@@ -5,6 +5,8 @@
 
 import type { DashboardSettings } from './types';
 
+export const STATIC_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:8000';
 
@@ -57,6 +59,7 @@ function describe(status: number, body: ErrorBody | null): ApiError {
 }
 
 export async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
+  if (STATIC_DEMO) return staticDemoResponse<T>(path);
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${path}`, {
@@ -81,6 +84,61 @@ export async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> 
     throw describe(res.status, body);
   }
   return (await res.json()) as T;
+}
+
+async function staticDemoResponse<T>(path: string): Promise<T> {
+  const fixturesModule = await import('./demoFixtures.json');
+  const fixtures = fixturesModule.default as Record<string, unknown>;
+  const pathname = path.split('?', 1)[0] ?? path;
+  const symbolMatch = pathname.match(/^\/api\/(?:gex|market|options|history|exposure|opportunities)\/([^/]+)/);
+  const requestedSymbol = symbolMatch?.[1]?.toUpperCase() ?? null;
+  const fixturePath = requestedSymbol
+    ? pathname.replace(`/${requestedSymbol}`, '/SPY')
+    : pathname;
+  const exposureKey = pathname.startsWith('/api/exposure/')
+    ? canonicalExposureFixtureKey(path, requestedSymbol, fixtures)
+    : null;
+  const source = (exposureKey ? fixtures[exposureKey] : undefined)
+    ?? fixtures[fixturePath]
+    ?? (pathname === '/api/symbols/search' ? fixtures['/api/symbols/search'] : undefined);
+  if (source === undefined) {
+    throw new ApiError(`Demo fixture unavailable for ${pathname}`, 404, 'demo');
+  }
+  const cloned = JSON.parse(JSON.stringify(source)) as unknown;
+  if (!requestedSymbol || requestedSymbol === 'SPY') return cloned as T;
+  return replaceDemoSymbol(cloned, requestedSymbol) as T;
+}
+
+function canonicalExposureFixtureKey(
+  path: string,
+  requestedSymbol: string | null,
+  fixtures: Record<string, unknown>,
+): string {
+  const url = new URL(path, 'https://demo.invalid');
+  const fixturePath = requestedSymbol
+    ? url.pathname.replace(`/${requestedSymbol}`, '/SPY')
+    : url.pathname;
+  const mode = url.searchParams.get('expirationMode') ?? 'all';
+  const range = url.searchParams.get('strikeRange') ?? '3';
+  const expiration = url.searchParams.get('expiration');
+  const query = new URLSearchParams({ expirationMode: mode, strikeRange: range });
+  if (expiration && mode === 'single') query.set('expiration', expiration);
+  const exact = `${fixturePath}?${query.toString()}`;
+  if (fixtures[exact] !== undefined) return exact;
+  return `${fixturePath}?expirationMode=all&strikeRange=3`;
+}
+
+function replaceDemoSymbol(value: unknown, symbol: string): unknown {
+  if (Array.isArray(value)) return value.map((item) => replaceDemoSymbol(item, symbol));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        key === 'symbol' && item === 'SPY' ? symbol : replaceDemoSymbol(item, symbol),
+      ]),
+    );
+  }
+  return value;
 }
 
 export async function apiPost<T>(path: string, payload: unknown): Promise<T> {

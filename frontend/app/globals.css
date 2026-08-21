@@ -16,6 +16,8 @@
   --neg: 244 84 84;
   --warn: 234 179 8;
   --accent: 96 165 250;
+  --exposure-pos: 34 211 238;
+  --exposure-neg: 236 72 153;
   --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
@@ -31,6 +33,8 @@
   --neg: 202 44 44;
   --warn: 176 128 8;
   --accent: 37 99 235;
+  --exposure-pos: 8 145 178;
+  --exposure-neg: 190 24 93;
 }
 
 html,
@@ -43,6 +47,7 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   font-variant-numeric: tabular-nums;
+  overflow-x: hidden;
 }
 
 /* Numbers in a trading grid must align vertically to be scannable. */

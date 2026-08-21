@@ -102,9 +102,9 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   expected_move: {
     title: 'Expected Move',
     body:
-      'The ATM straddle price: the call plus the put at the strike nearest spot with both legs ' +
-      'quoted. A rough one-standard-deviation range priced by the market for that expiry.',
-    origin: 'observed',
+      'Derived from observed inputs: the quoted ATM call and put are summed at the strike nearest ' +
+      'spot to estimate a rough one-standard-deviation range for one explicit expiry.',
+    origin: 'model_derived',
   },
   pin_risk: {
     title: 'Pin Risk',

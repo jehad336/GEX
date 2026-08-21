@@ -18,6 +18,8 @@ const config: Config = {
         neg: 'rgb(var(--neg) / <alpha-value>)',
         warn: 'rgb(var(--warn) / <alpha-value>)',
         accent: 'rgb(var(--accent) / <alpha-value>)',
+        exposurePos: 'rgb(var(--exposure-pos) / <alpha-value>)',
+        exposureNeg: 'rgb(var(--exposure-neg) / <alpha-value>)',
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
