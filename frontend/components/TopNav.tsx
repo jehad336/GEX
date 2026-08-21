@@ -7,6 +7,7 @@ import { apiGet } from '@/lib/api';
 import { formatTime, secondsSince } from '@/lib/format';
 import { useDebounced, useNow, type StreamState } from '@/lib/hooks';
 import type { DashboardSettings, MarketStatus, ProvidersResponse } from '@/lib/types';
+import { MainNav } from './MainNav';
 import { FreshnessBadge } from './ui';
 
 const MARKET_STATE_META: Record<MarketStatus['state'], { label: string; className: string }> = {
@@ -146,6 +147,8 @@ export function TopNav({
         </div>
 
         {/* search */}
+        <MainNav className="hidden 2xl:flex" />
+
         <div ref={boxRef} className="relative w-56">
           <input
             value={query}
