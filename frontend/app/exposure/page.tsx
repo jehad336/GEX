@@ -12,7 +12,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 
-import { API_BASE, apiGet } from '@/lib/api';
+import { API_BASE, STATIC_DEMO, apiGet } from '@/lib/api';
 import { formatDateShort, formatNumber, formatPrice, formatTime } from '@/lib/format';
 import { useApi, useSettings, useSymbolStream } from '@/lib/hooks';
 import { getServerStars, getStars, subscribeStars, toggleStar } from '@/lib/starStore';
@@ -370,15 +370,17 @@ function ExposureLadder() {
                 Reset to Strike Ladder
               </button>
             ) : null}
-            <a
-              href={`${API_BASE}/api/exposure/${symbol}/ladder?${query}`}
-              target="_blank"
-              rel="noreferrer"
-              className="btn"
-              title="Raw JSON from the backend"
-            >
-              API
-            </a>
+            {!STATIC_DEMO ? (
+              <a
+                href={`${API_BASE}/api/exposure/${symbol}/ladder?${query}`}
+                target="_blank"
+                rel="noreferrer"
+                className="btn"
+                title="Raw JSON from the backend"
+              >
+                API
+              </a>
+            ) : null}
           </div>
         </div>
       </header>
