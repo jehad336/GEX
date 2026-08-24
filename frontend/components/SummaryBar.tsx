@@ -75,25 +75,25 @@ export function SummaryBar({
 
   return (
     <section className="panel">
-      <header className="panel-head">
-        <div className="flex items-center gap-2">
+      <header className="panel-head items-start sm:items-center">
+        <div className="flex min-w-0 items-center gap-2">
           <h2 className="text-base font-bold tracking-tight">{snapshot.symbol}</h2>
           <span className={clsx('chip', regimeTone(snapshot.regime.regime))} title={snapshot.regime.explanation}>
             {snapshot.regime.regime}
           </span>
           <Info term="regime" />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto sm:justify-end sm:gap-2">
           <QualityIndicator quality={snapshot.quality} />
           <FreshnessBadge status={snapshot.freshness.status} asOf={snapshot.freshness.as_of} />
-          <span className="text-2xs text-faint" title={`Sign convention: ${snapshot.sign_convention}`}>
+          <span className="ml-auto text-[9px] text-faint sm:ml-0 sm:text-2xs" title={`Sign convention: ${snapshot.sign_convention}`}>
             {formatTime(snapshot.computed_at, settings.timezone)} ·{' '}
             {snapshot.calculation_ms.toFixed(0)} ms calc · {snapshot.provider}
           </span>
         </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-x-5 gap-y-4 p-4 sm:grid-cols-3 lg:grid-cols-6 xl:grid-cols-9">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-4 p-3 sm:grid-cols-3 sm:gap-x-5 sm:p-4 lg:grid-cols-6 xl:grid-cols-9">
         <Stat
           label="Spot"
           value={formatPrice(spot)}
@@ -165,7 +165,7 @@ export function SummaryBar({
         <Stat label="ATM IV" term="iv" value={formatIv(snapshot.atm_iv)} sub="front expiry" />
       </div>
 
-      <div className="border-t border-line px-4 py-2">
+      <div className="border-t border-line px-3 py-2 sm:px-4">
         <p className="text-2xs leading-relaxed text-faint">
           <span className="font-semibold uppercase tracking-wider text-warn">Model estimate</span>{' '}
           {snapshot.disclaimer}

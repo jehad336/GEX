@@ -43,11 +43,19 @@ body {
   color: rgb(var(--ink));
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   font-variant-numeric: tabular-nums;
   overflow-x: hidden;
+  background-image:
+    radial-gradient(circle at 12% -8%, rgb(var(--accent) / 0.09), transparent 28rem),
+    radial-gradient(circle at 92% 8%, rgb(var(--exposure-pos) / 0.045), transparent 24rem);
+  background-attachment: fixed;
 }
 
 /* Numbers in a trading grid must align vertically to be scannable. */
@@ -71,12 +79,19 @@ body {
   background: rgb(var(--faint));
 }
 
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 @layer components {
   .panel {
-    @apply rounded-lg border border-line bg-surface;
+    @apply rounded-xl border border-line/90 bg-surface/95 shadow-[0_10px_28px_rgba(0,0,0,0.12)];
   }
   .panel-head {
-    @apply flex items-center justify-between gap-3 border-b border-line px-4 py-2.5;
+    @apply flex flex-wrap items-center justify-between gap-2 border-b border-line/80 px-3 py-2.5 sm:px-4;
   }
   .panel-title {
     @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-muted;
@@ -88,7 +103,7 @@ body {
     @apply inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wider;
   }
   .btn {
-    @apply rounded border border-line bg-raised px-2.5 py-1 text-xs font-medium text-muted transition-colors hover:border-faint hover:text-ink;
+    @apply inline-flex min-h-8 items-center justify-center rounded-lg border border-line bg-raised px-2.5 py-1 text-xs font-medium text-muted transition-colors hover:border-faint hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30;
   }
   .btn-active {
     @apply border-accent/60 bg-accent/10 text-accent;
@@ -101,6 +116,15 @@ body {
   }
   .grid-table td {
     @apply whitespace-nowrap border-t border-line/60 px-2.5 py-1.5;
+  }
+}
+
+@media (max-width: 639px) {
+  .grid-table th {
+    @apply px-2 py-2;
+  }
+  .grid-table td {
+    @apply px-2 py-2;
   }
 }
 

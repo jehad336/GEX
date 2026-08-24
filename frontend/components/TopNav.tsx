@@ -38,6 +38,18 @@ interface SearchResult {
   type: string;
 }
 
+const SCREEN_LINKS = [
+  { label: 'Overview', short: 'Home', anchor: 'market-overview' },
+  { label: 'Chart', short: 'Chart', anchor: 'chart' },
+  { label: 'Gamma Profile', short: 'Gamma', anchor: 'gamma-profile' },
+  { label: '0DTE', short: '0DTE', anchor: 'zero-dte' },
+  { label: 'Flow', short: 'Flow', anchor: 'flow' },
+  { label: 'Volatility', short: 'Vol', anchor: 'volatility' },
+  { label: 'History', short: 'History', anchor: 'history' },
+  { label: 'Watchlist', short: 'Watch', anchor: 'watchlist' },
+  { label: 'Opportunities', short: 'Scanner', anchor: 'opportunities' },
+] as const;
+
 export function TopNav({
   symbol,
   onSymbolChange,
@@ -135,153 +147,155 @@ export function TopNav({
   const marketMeta = status ? MARKET_STATE_META[status.state] : null;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-bg/95 backdrop-blur">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
-        {/* brand */}
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded bg-accent/15 text-sm font-black text-accent">
-            Γ
+    <header className="sticky top-0 z-40 border-b border-line/90 bg-bg/90 shadow-[0_12px_32px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+      <div className="mx-auto max-w-[1920px]">
+        <div className="flex flex-wrap items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-4">
+          <div className="flex min-w-0 shrink-0 items-center gap-2.5">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-accent/25 bg-gradient-to-br from-accent/25 to-exposurePos/5 text-base font-black text-accent shadow-[0_0_24px_rgba(96,165,250,0.12)]">
+              Γ
+            </div>
+            <div className="hidden leading-none sm:block">
+              <div className="text-sm font-bold tracking-tight">GEX Terminal</div>
+              <div className="mt-1 text-[9px] font-medium uppercase tracking-[0.18em] text-faint">
+                Options intelligence
+              </div>
+            </div>
+            <span className="tnum rounded-lg border border-accent/25 bg-accent/10 px-2 py-1 text-sm font-bold text-accent">
+              {symbol}
+            </span>
           </div>
-          <div className="leading-none">
-            <div className="text-sm font-bold tracking-tight">GEX Dashboard</div>
-            <div className="text-2xs text-faint">Options positioning</div>
+
+          <div ref={boxRef} className="relative order-3 w-full md:order-none md:min-w-[240px] md:max-w-xl md:flex-1">
+            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-faint" aria-hidden="true">
+              <svg viewBox="0 0 20 20" className="h-4 w-4 fill-none stroke-current" strokeWidth="1.7">
+                <circle cx="8.5" cy="8.5" r="5.25" />
+                <path d="m12.5 12.5 4 4" />
+              </svg>
+            </span>
+            <input
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setOpen(true);
+              }}
+              onFocus={() => setOpen(true)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && query.trim()) select(query.trim());
+                if (e.key === 'Escape') setOpen(false);
+              }}
+              placeholder="Search symbol or company…"
+              aria-label="Symbol search"
+              className="h-10 w-full rounded-xl border border-line bg-raised/80 pl-9 pr-12 text-sm text-ink shadow-inner outline-none placeholder:text-faint transition focus:border-accent/70 focus:ring-2 focus:ring-accent/10"
+            />
+            <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-line bg-bg px-1.5 py-0.5 text-[9px] text-faint sm:block">
+              ↵
+            </kbd>
+            {open && results.length > 0 ? (
+              <ul className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-72 overflow-auto rounded-xl border border-line bg-surface/98 p-1 shadow-2xl backdrop-blur">
+                {results.map((result) => (
+                  <li key={result.symbol}>
+                    <button
+                      type="button"
+                      onClick={() => select(result.symbol)}
+                      className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-xs transition hover:bg-raised"
+                    >
+                      <span className="font-bold text-ink">{result.symbol}</span>
+                      <span className="truncate text-2xs text-faint">{result.name}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+            {marketMeta && status ? (
+              <span
+                className={clsx('chip h-7', marketMeta.className)}
+                title={`${status.timezone}: ${formatTime(status.local_time)}\n${status.note}`}
+              >
+                <span className="sm:hidden">{status.state === 'OPEN' ? 'Open' : status.state.replace('_', ' ')}</span>
+                <span className="hidden sm:inline">{marketMeta.label}</span>
+              </span>
+            ) : null}
+            {providers?.demo_banner ? <FreshnessBadge status="DEMO" /> : null}
+            <span className={clsx('hidden h-7 items-center gap-1.5 rounded-lg border border-line bg-raised px-2 text-[10px] font-semibold lg:inline-flex', stream.className)} title={stream.help}>
+              <span className="h-1.5 w-1.5 rounded-full bg-current" />
+              {stream.label}
+            </span>
+            <div className="hidden min-w-[92px] text-right text-[10px] leading-tight xl:block">
+              <div className="font-semibold text-muted">
+                {lastUpdated ? formatTime(lastUpdated, settings.timezone) : '--'}
+                {age !== null ? <span className="ml-1 text-faint">{age}s</span> : null}
+              </div>
+              <div className="mt-0.5 text-faint">
+                {activeProvider.toUpperCase()} · {latencyMs !== null ? `${Math.round(latencyMs)}ms` : '--'}
+                {providerDetail && !providerDetail.available ? <span className="ml-1 text-neg">offline</span> : null}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenSettings}
+              className="grid h-9 w-9 place-items-center rounded-xl border border-line bg-raised text-muted transition hover:border-accent/50 hover:text-ink"
+              aria-label="Open settings"
+              title="Settings"
+            >
+              <svg viewBox="0 0 20 20" className="h-4 w-4 fill-none stroke-current" strokeWidth="1.6" aria-hidden="true">
+                <path d="M3 5h14M3 10h14M3 15h14" />
+                <circle cx="7" cy="5" r="1.5" fill="currentColor" stroke="none" />
+                <circle cx="13" cy="10" r="1.5" fill="currentColor" stroke="none" />
+                <circle cx="8" cy="15" r="1.5" fill="currentColor" stroke="none" />
+              </svg>
+            </button>
           </div>
         </div>
 
-        <nav className="flex max-w-full items-center overflow-x-auto whitespace-nowrap rounded border border-line bg-raised p-0.5" aria-label="Primary screens">
-          {[
-            ['Overview', 'market-overview'],
-            ['Chart', 'chart'],
-            ['Gamma Profile', 'gamma-profile'],
-            ['0DTE', 'zero-dte'],
-            ['Flow', 'flow'],
-            ['Volatility', 'volatility'],
-            ['History', 'history'],
-            ['Watchlist', 'watchlist'],
-            ['Opportunities', 'opportunities'],
-          ].map(([label, anchor]) => (
+        <div className="flex items-center gap-2 border-t border-line/80 px-2 sm:px-4">
+          <nav className="no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-1.5" aria-label="Primary screens">
+            {SCREEN_LINKS.map(({ label, short, anchor }) => (
+              <Link
+                key={anchor}
+                href={`/?symbol=${encodeURIComponent(symbol)}#${anchor}`}
+                className={clsx(
+                  'shrink-0 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] transition sm:text-[11px]',
+                  activeView === 'dashboard' && anchor === 'market-overview'
+                    ? 'bg-accent/15 text-accent'
+                    : 'text-muted hover:bg-raised hover:text-ink',
+                )}
+              >
+                <span className="sm:hidden">{short}</span>
+                <span className="hidden sm:inline">{label}</span>
+              </Link>
+            ))}
             <Link
-              key={anchor}
-              href={`/?symbol=${encodeURIComponent(symbol)}#${anchor}`}
+              href={`/exposure?symbol=${encodeURIComponent(symbol)}`}
               className={clsx(
-                'rounded px-2 py-1 text-2xs font-semibold uppercase tracking-wider',
-                activeView === 'dashboard' && anchor === 'market-overview'
-                  ? 'bg-accent/15 text-accent'
-                  : 'text-muted hover:text-ink',
+                'shrink-0 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] transition sm:text-[11px]',
+                activeView === 'exposure' ? 'bg-accent/15 text-accent' : 'text-muted hover:bg-raised hover:text-ink',
               )}
             >
-              {label}
+              <span className="sm:hidden">Ladder</span>
+              <span className="hidden sm:inline">Exposure Ladder</span>
             </Link>
-          ))}
-          <Link
-            href={`/exposure?symbol=${encodeURIComponent(symbol)}`}
-            className={clsx(
-              'rounded px-2 py-1 text-2xs font-semibold uppercase tracking-wider',
-              activeView === 'exposure' ? 'bg-accent/15 text-accent' : 'text-muted hover:text-ink',
-            )}
-          >
-            Exposure Ladder
-          </Link>
-        </nav>
+          </nav>
 
-        {/* search */}
-        <div ref={boxRef} className="relative w-56">
-          <input
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setOpen(true);
-            }}
-            onFocus={() => setOpen(true)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && query.trim()) select(query.trim());
-              if (e.key === 'Escape') setOpen(false);
-            }}
-            placeholder="Search any US ticker…"
-            aria-label="Symbol search"
-            className="w-full rounded border border-line bg-raised px-2.5 py-1.5 text-xs text-ink placeholder:text-faint focus:border-accent focus:outline-none"
-          />
-          {open && results.length > 0 ? (
-            <ul className="absolute left-0 top-full z-50 mt-1 max-h-72 w-72 overflow-auto rounded border border-line bg-surface shadow-xl">
-              {results.map((r) => (
-                <li key={r.symbol}>
-                  <button
-                    type="button"
-                    onClick={() => select(r.symbol)}
-                    className="flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-xs hover:bg-raised"
-                  >
-                    <span className="font-semibold">{r.symbol}</span>
-                    <span className="truncate text-2xs text-faint">{r.name}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-
-        {/* quick symbols */}
-        <div className="flex flex-wrap items-center gap-1">
-          {quickSymbols.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => select(s)}
-              className={clsx('btn', s === symbol && 'btn-active')}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-
-        <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-1.5">
-          {marketMeta && status ? (
-            <span
-              className={clsx('chip', marketMeta.className)}
-              title={`${status.timezone}: ${formatTime(status.local_time)}\n${status.note}`}
-            >
-              {marketMeta.label}
-            </span>
-          ) : null}
-
-          {providers?.demo_banner ? <FreshnessBadge status="DEMO" /> : null}
-
-          <div className="text-2xs leading-tight">
-            <div className="text-faint">Provider</div>
-            <div
-              className="font-semibold uppercase text-muted"
-              title={providerDetail?.message ?? undefined}
-            >
-              {activeProvider}
-              {providerDetail && !providerDetail.available ? (
-                <span className="ml-1 text-neg">offline</span>
-              ) : null}
-            </div>
+          <div className="no-scrollbar hidden max-w-[42vw] shrink-0 items-center gap-1 overflow-x-auto border-l border-line pl-2 lg:flex">
+            {quickSymbols.map((quickSymbol) => (
+              <button
+                key={quickSymbol}
+                type="button"
+                onClick={() => select(quickSymbol)}
+                className={clsx(
+                  'shrink-0 rounded-md px-2 py-1 text-[10px] font-semibold transition',
+                  quickSymbol === symbol
+                    ? 'bg-accent/15 text-accent'
+                    : 'text-faint hover:bg-raised hover:text-ink',
+                )}
+              >
+                {quickSymbol}
+              </button>
+            ))}
           </div>
-
-          <div className="text-2xs leading-tight">
-            <div className="text-faint">Latency</div>
-            <div className="tnum font-semibold text-muted">
-              {latencyMs !== null ? `${Math.round(latencyMs)} ms` : '--'}
-            </div>
-          </div>
-
-          <div className="text-2xs leading-tight">
-            <div className="text-faint">Updated</div>
-            <div className="tnum font-semibold text-muted">
-              {lastUpdated ? `${formatTime(lastUpdated, settings.timezone)}` : '--'}
-              {age !== null ? (
-                <span className="ml-1 text-faint">({age}s)</span>
-              ) : null}
-            </div>
-          </div>
-
-          <span className={clsx('chip border-line bg-raised', stream.className)} title={stream.help}>
-            {stream.label}
-          </span>
-
-          <button type="button" onClick={onOpenSettings} className="btn" aria-label="Open settings">
-            Settings
-          </button>
         </div>
       </div>
     </header>

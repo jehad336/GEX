@@ -151,12 +151,13 @@ function Dashboard() {
       {demoBanner ? (
         <div className="border-b border-accent/40 bg-accent/10 px-4 py-2">
           <p className="text-center text-xs font-semibold text-accent">
-            DEMO DATA — {demoBanner.message}
+            <span className="sm:hidden">DEMO DATA — synthetic evaluation feed, not market data.</span>
+            <span className="hidden sm:inline">DEMO DATA — {demoBanner.message}</span>
           </p>
         </div>
       ) : null}
 
-      <main id="market-overview" className="mx-auto max-w-[1920px] scroll-mt-24 space-y-4 p-4">
+      <main id="market-overview" className="mx-auto max-w-[1920px] scroll-mt-32 space-y-3 p-2.5 sm:scroll-mt-24 sm:space-y-4 sm:p-4">
         {/* ---- summary ---- */}
         {snapshotQuery.error && !snapshot ? (
           <div className="panel p-4">

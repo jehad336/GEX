@@ -221,21 +221,22 @@ function ExposureLadder() {
   return (
     <div className="min-h-screen">
       {/* ---------------- toolbar ---------------- */}
-      <header className="sticky top-0 z-40 border-b border-line bg-bg/95 backdrop-blur">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded bg-accent/15 text-sm font-black text-accent">
+      <header className="z-40 border-b border-line/90 bg-bg/90 shadow-[0_12px_32px_rgba(0,0,0,0.22)] backdrop-blur-xl md:sticky md:top-0">
+        <div className="flex items-center gap-2 px-3 py-2.5 sm:gap-4 sm:px-4">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-accent/25 bg-gradient-to-br from-accent/25 to-exposurePos/5 text-base font-black text-accent">
               Γ
             </div>
-            <div className="leading-none">
-              <div className="text-sm font-bold tracking-tight">Exposure Ladder</div>
-              <div className="text-2xs text-faint">GEX / Greeks strike matrix</div>
+            <div className="min-w-0 leading-none">
+              <div className="truncate text-sm font-bold tracking-tight"><span className="sm:hidden">Ladder</span><span className="hidden sm:inline">Exposure Ladder</span></div>
+              <div className="mt-1 hidden text-[9px] font-medium uppercase tracking-[0.16em] text-faint sm:block">GEX / Greeks matrix</div>
             </div>
+            <span className="tnum rounded-lg border border-accent/25 bg-accent/10 px-2 py-1 text-sm font-bold text-accent">{symbol}</span>
           </div>
 
-          <MainNav className="hidden lg:flex" />
+          <MainNav className="hidden lg:flex" symbol={symbol} />
 
-          <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-1.5">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
             {status ? (
               <span className={clsx('chip', status.state === 'OPEN'
                 ? 'border-pos/40 bg-pos/10 text-pos'
@@ -249,45 +250,51 @@ function ExposureLadder() {
             {freshness ? (
               <FreshnessBadge status={freshness.status} asOf={freshness.asOf} />
             ) : null}
-            <QualityIndicator quality={ladder?.quality} />
-            <Meta label="Provider" value={ladder?.provider ?? '–'} />
-            <Meta
-              label="Latency"
-              value={ladder ? `${Math.round(ladder.latencyMs)} ms` : '–'}
-              title="Time to fetch and normalize the chain"
-            />
-            <Meta
-              label="Updated"
-              value={ladder ? formatTime(ladder.timestamp, settings.timezone) : '–'}
-            />
+            <span className="hidden sm:inline-flex"><QualityIndicator quality={ladder?.quality} /></span>
+            <div className="hidden items-center gap-4 xl:flex">
+              <Meta label="Provider" value={ladder?.provider ?? '–'} />
+              <Meta
+                label="Latency"
+                value={ladder ? `${Math.round(ladder.latencyMs)} ms` : '–'}
+                title="Time to fetch and normalize the chain"
+              />
+              <Meta
+                label="Updated"
+                value={ladder ? formatTime(ladder.timestamp, settings.timezone) : '–'}
+              />
+            </div>
             <button type="button" className="btn" onClick={() => setSettingsOpen(true)}>
-              Settings
+              <span className="sm:hidden">Tune</span><span className="hidden sm:inline">Settings</span>
             </button>
           </div>
         </div>
 
+        <div className="no-scrollbar overflow-x-auto border-t border-line/80 px-2 py-1.5 lg:hidden">
+          <MainNav className="min-w-max" symbol={symbol} />
+        </div>
+
         {/* symbol + spot */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-line px-4 py-2">
-          <div className="flex flex-wrap items-center gap-1">
+        <div className="flex flex-col gap-2 border-t border-line/80 px-3 py-2 sm:flex-row sm:items-center sm:px-4">
+          <div className="no-scrollbar flex min-w-0 items-center gap-1 overflow-x-auto">
             {SYMBOLS.map((s) => (
               <button
                 key={s}
                 type="button"
                 onClick={() => setParams({ symbol: s })}
-                className={clsx('btn', s === symbol && 'btn-active')}
+                className={clsx('btn shrink-0', s === symbol && 'btn-active')}
               >
                 {s}
               </button>
             ))}
           </div>
 
-          <div className="ml-auto flex items-baseline gap-2">
+          <div className="flex items-baseline justify-between gap-2 sm:ml-auto sm:justify-start">
             <span className="stat-label">Spot</span>
-            <span className="tnum text-xl font-bold">
+            <span className="tnum text-lg font-bold sm:text-xl">
               {liveSpot != null ? formatPrice(liveSpot) : '–'}
             </span>
             {ladder ? (
-              <span className="tnum text-2xs text-faint">
+              <span className="tnum truncate text-[9px] text-faint sm:text-2xs">
                 {formatNumber(ladder.expirationSelection.contractsInScope)} contracts ·{' '}
                 {ladder.expirationSelection.strikesVisible} of{' '}
                 {ladder.expirationSelection.strikesInScope} strikes
@@ -297,7 +304,7 @@ function ExposureLadder() {
         </div>
 
         {/* filters */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line px-4 py-2">
+        <div className="no-scrollbar flex items-end gap-4 overflow-x-auto border-t border-line/80 px-3 py-2 sm:px-4">
           <Filter label="Expiration">
             <SegmentedControl
               size="xs"
@@ -345,7 +352,7 @@ function ExposureLadder() {
             />
           </Filter>
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             <button type="button" className="btn" onClick={centerOnSpot} title="Shortcut: C">
               Center on Spot
             </button>
@@ -388,13 +395,14 @@ function ExposureLadder() {
       {ladder?.demoBanner ? (
         <div className="border-b border-accent/40 bg-accent/10 px-4 py-1.5">
           <p className="text-center text-2xs font-semibold text-accent">
-            DEMO DATA — {ladder.demoBanner.message}
+            <span className="sm:hidden">DEMO DATA — synthetic evaluation feed, not market data.</span>
+            <span className="hidden sm:inline">DEMO DATA — {ladder.demoBanner.message}</span>
           </p>
         </div>
       ) : null}
 
       {/* ---------------- body ---------------- */}
-      <main className="grid gap-3 p-3 xl:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_380px]">
+      <main className="grid gap-2.5 p-2.5 sm:gap-3 sm:p-3 xl:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_380px]">
         <section className="panel min-w-0">
           <header className="panel-head">
             <div className="flex items-center gap-1.5">
