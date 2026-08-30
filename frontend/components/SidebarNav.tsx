@@ -104,30 +104,3 @@ export function SidebarNav({ symbol }: { symbol: string }) {
     </aside>
   );
 }
-
-export function AnalysisTabs({ symbol }: { symbol: string }) {
-  const tabs = [
-    { label: 'Overview', href: '#market-overview' },
-    { label: 'Gamma', href: '#gamma-profile' },
-    { label: 'Vanna & Charm', href: '#zero-dte' },
-    { label: 'Flow', href: '#flow' },
-    { label: 'Volatility', href: '#volatility' },
-  ];
-
-  return (
-    <div className="no-scrollbar flex items-center gap-1 overflow-x-auto rounded-xl border border-line/80 bg-surface/80 p-1 shadow-sm" aria-label="Analysis views">
-      {tabs.map((tab, index) => (
-        <Link
-          key={tab.href}
-          href={`/?symbol=${encodeURIComponent(symbol)}${tab.href}`}
-          className={clsx(
-            'shrink-0 rounded-lg px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] transition sm:px-4 sm:text-[11px]',
-            index === 0 ? 'bg-gradient-to-r from-accent to-exposurePos text-bg shadow-sm' : 'text-muted hover:bg-raised hover:text-ink',
-          )}
-        >
-          {tab.label}
-        </Link>
-      ))}
-    </div>
-  );
-}

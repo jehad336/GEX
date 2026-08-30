@@ -35,7 +35,7 @@ import { SettingsDrawer } from '@/components/SettingsDrawer';
 import { SummaryBar } from '@/components/SummaryBar';
 import { TopNav } from '@/components/TopNav';
 import { OpportunityPanel } from '@/components/OpportunityPanel';
-import { AnalysisTabs, SidebarNav } from '@/components/SidebarNav';
+import { SidebarNav } from '@/components/SidebarNav';
 import { EmptyBlock, ErrorBlock, LoadingBlock, Panel, SegmentedControl } from '@/components/ui';
 
 const ALL_SYMBOLS = ['SPX', 'SPY', 'QQQ', 'NDX', 'IWM', 'DIA', 'NVDA', 'TSLA', 'AAPL', 'AMD', 'MSFT', 'AMZN', 'META'];
@@ -169,7 +169,10 @@ function Dashboard() {
             <h1 className="text-xl font-bold tracking-tight sm:text-2xl">GEX Market Intelligence</h1>
             <p className="mt-1 max-w-2xl text-xs text-faint">Gamma structure, dealer positioning and actionable options context in one workspace.</p>
           </div>
-          <AnalysisTabs symbol={symbol} />
+          <div className="flex flex-wrap items-center gap-2" aria-label="Workspace status">
+            <span className="chip border-line bg-surface text-muted">10 analytics modules</span>
+            <span className="chip border-warn/30 bg-warn/5 text-warn">Observed + model</span>
+          </div>
         </section>
         {/* ---- summary ---- */}
         {snapshotQuery.error && !snapshot ? (

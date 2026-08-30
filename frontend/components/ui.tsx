@@ -18,7 +18,7 @@ export function Info({ term, className }: { term: keyof typeof GLOSSARY; classNa
       <button
         type="button"
         aria-label={`What is ${entry.title}?`}
-        className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-faint/60 text-[9px] font-bold leading-none text-faint transition-colors hover:border-accent hover:text-accent"
+        className="flex h-5 w-5 items-center justify-center rounded-full border border-faint/60 text-[9px] font-bold leading-none text-faint transition-colors hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
       >
         i
       </button>
@@ -266,7 +266,9 @@ export function SegmentedControl<T extends string | number>({
           onClick={() => onChange(opt.value)}
           className={clsx(
             'border-r border-line font-medium transition-colors last:border-r-0',
-            size === 'xs' ? 'px-1.5 py-0.5 text-2xs' : 'px-2 py-1 text-xs',
+            size === 'xs'
+              ? 'min-h-7 px-2 py-1 text-2xs sm:min-h-0 sm:px-1.5 sm:py-0.5'
+              : 'min-h-8 px-2 py-1 text-xs',
             opt.value === value
               ? 'bg-accent/15 text-accent'
               : 'bg-raised text-muted hover:text-ink',

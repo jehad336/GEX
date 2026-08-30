@@ -236,7 +236,7 @@ export function TopNav({
             <button
               type="button"
               onClick={onOpenSettings}
-              className="grid h-9 w-9 place-items-center rounded-xl border border-line bg-raised text-muted transition hover:border-accent/50 hover:text-ink"
+              className="flex h-9 items-center justify-center gap-2 rounded-xl border border-line bg-raised px-2.5 text-muted transition hover:border-accent/50 hover:text-ink"
               aria-label="Open settings"
               title="Settings"
             >
@@ -246,6 +246,7 @@ export function TopNav({
                 <circle cx="13" cy="10" r="1.5" fill="currentColor" stroke="none" />
                 <circle cx="8" cy="15" r="1.5" fill="currentColor" stroke="none" />
               </svg>
+              <span className="hidden text-xs font-medium md:inline">Settings</span>
             </button>
           </div>
         </div>

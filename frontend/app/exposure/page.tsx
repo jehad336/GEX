@@ -265,7 +265,7 @@ function ExposureLadder() {
               />
             </div>
             <button type="button" className="btn" onClick={() => setSettingsOpen(true)}>
-              <span className="sm:hidden">Tune</span><span className="hidden sm:inline">Settings</span>
+              Settings
             </button>
           </div>
         </div>
@@ -305,7 +305,7 @@ function ExposureLadder() {
         </div>
 
         {/* filters */}
-        <div className="no-scrollbar flex items-end gap-4 overflow-x-auto border-t border-line/80 px-3 py-2 sm:px-4">
+        <div className="grid gap-2 border-t border-line/80 px-3 py-2 sm:grid-cols-2 sm:px-4 xl:flex xl:items-end xl:gap-4 xl:overflow-x-auto">
           <Filter label="Expiration">
             <SegmentedControl
               size="xs"
@@ -353,7 +353,7 @@ function ExposureLadder() {
             />
           </Filter>
 
-          <div className="ml-auto flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center justify-end gap-2 sm:col-span-2 xl:ml-auto">
             <button type="button" className="btn" onClick={centerOnSpot} title="Shortcut: C">
               Center on Spot
             </button>
@@ -510,9 +510,9 @@ function Meta({ label, value, title }: { label: string; value: string; title?: s
 
 function Filter({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-line/70 bg-raised/35 px-2 py-1.5 xl:justify-start xl:rounded-none xl:border-0 xl:bg-transparent xl:p-0">
       <span className="stat-label whitespace-nowrap">{label}</span>
-      {children}
+      <div className="no-scrollbar min-w-0 overflow-x-auto">{children}</div>
     </div>
   );
 }
