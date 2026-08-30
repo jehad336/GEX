@@ -31,19 +31,19 @@ export function SidebarNav({ symbol }: { symbol: string }) {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-50 hidden w-60 flex-col border-r border-line/80 bg-surface/95 shadow-[18px_0_40px_rgba(0,0,0,0.16)] backdrop-blur-xl xl:flex">
+    <aside className="fixed inset-y-0 left-0 z-50 hidden w-60 flex-col border-r border-line/65 bg-surface/88 shadow-[24px_0_70px_rgba(0,0,0,0.3)] backdrop-blur-2xl xl:flex">
       <div className="flex h-[68px] items-center gap-3 border-b border-line/80 px-5">
-        <div className="grid h-9 w-9 place-items-center rounded-xl border border-accent/30 bg-gradient-to-br from-accent/25 to-exposurePos/10 text-base font-black text-accent shadow-[0_0_28px_rgba(96,165,250,0.16)]">
+        <div className="grid h-10 w-10 place-items-center rounded-2xl border border-accent/35 bg-gradient-to-br from-accent/30 via-accent/10 to-exposurePos/10 text-lg font-black text-accent shadow-[0_0_34px_rgba(91,188,255,0.2)]">
           Γ
         </div>
         <div className="min-w-0">
-          <div className="truncate text-sm font-bold tracking-tight text-ink">GEX Terminal</div>
+          <div className="truncate text-sm font-extrabold tracking-tight text-ink">GEX Terminal</div>
           <div className="mt-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-faint">Options intelligence</div>
         </div>
       </div>
 
       <div className="border-b border-line/70 p-3">
-        <div className="rounded-xl border border-line/80 bg-bg/55 p-3">
+        <div className="rounded-2xl border border-accent/15 bg-gradient-to-br from-accent/10 via-bg/55 to-exposurePos/5 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]">
           <div className="flex items-center justify-between gap-3">
             <span className="stat-label">Active market</span>
             <span className="h-2 w-2 rounded-full bg-pos shadow-[0_0_10px_rgba(34,197,126,0.7)]" />
@@ -73,7 +73,7 @@ export function SidebarNav({ symbol }: { symbol: string }) {
                     className={clsx(
                       'group flex min-h-10 items-center gap-3 rounded-xl px-2.5 text-xs font-medium transition',
                       active
-                        ? 'bg-accent/15 text-accent shadow-[inset_3px_0_0_rgb(var(--accent))]'
+                        ? 'bg-gradient-to-r from-accent/18 to-accent/5 text-accent shadow-[inset_3px_0_0_rgb(var(--accent)),0_8px_24px_rgba(0,0,0,0.14)]'
                         : 'text-muted hover:bg-raised hover:text-ink',
                     )}
                   >
@@ -93,7 +93,7 @@ export function SidebarNav({ symbol }: { symbol: string }) {
       </nav>
 
       <div className="border-t border-line/80 p-3">
-        <div className="rounded-xl bg-gradient-to-br from-accent/12 to-exposurePos/5 p-3">
+        <div className="rounded-2xl border border-accent/15 bg-gradient-to-br from-accent/13 via-raised/30 to-exposurePos/6 p-3 shadow-inner">
           <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-accent">
             <span className="grid h-5 w-5 place-items-center rounded-md bg-accent/15">✦</span>
             Model workspace

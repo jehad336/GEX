@@ -23,19 +23,21 @@ export function LevelReadout({
   term,
   tone,
   spot,
+  className,
 }: {
   level: Level | undefined;
   label: string;
   term?: Parameters<typeof Info>[0]['term'];
   tone?: string;
   spot: number;
+  className?: string;
 }) {
   const price = level?.price;
   const distance = level?.distance ?? (price != null ? price - spot : null);
   const distancePct = level?.distance_pct;
 
   return (
-    <div className="min-w-0">
+    <div className={clsx('min-w-0', className)}>
       <div className="flex items-center gap-1">
         <span className="stat-label truncate">{label}</span>
         {term ? <Info term={term} /> : null}
@@ -74,7 +76,7 @@ export function SummaryBar({
   const em = snapshot.expected_move;
 
   return (
-    <section className="panel">
+    <section className="panel overflow-hidden">
       <header className="panel-head items-start sm:items-center">
         <div className="flex min-w-0 items-center gap-2">
           <h2 className="text-base font-bold tracking-tight">{snapshot.symbol}</h2>
@@ -93,8 +95,9 @@ export function SummaryBar({
         </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-x-3 gap-y-4 p-3 sm:grid-cols-3 sm:gap-x-5 sm:p-4 lg:grid-cols-6 xl:grid-cols-9">
+      <div className="grid grid-cols-2 gap-2 p-2.5 sm:grid-cols-3 sm:p-3 lg:grid-cols-6 xl:grid-cols-9">
         <Stat
+          className="metric-tile"
           label="Spot"
           value={formatPrice(spot)}
           sub={
@@ -105,6 +108,7 @@ export function SummaryBar({
           tone={toneForValue(changePct)}
         />
         <Stat
+          className="metric-tile"
           label="Net GEX"
           term="net_gex"
           value={formatExposure(snapshot.totals.net_gex, settings.units)}
@@ -113,6 +117,7 @@ export function SummaryBar({
           title={`Exact: ${snapshot.totals.net_gex.toLocaleString('en-US')}`}
         />
         <LevelReadout
+          className="metric-tile"
           label="Gamma Flip"
           term="gamma_flip"
           level={snapshot.levels.gamma_flip}
@@ -120,6 +125,7 @@ export function SummaryBar({
           tone="text-warn"
         />
         <LevelReadout
+          className="metric-tile"
           label="Call Wall"
           term="call_wall"
           level={snapshot.levels.call_wall}
@@ -127,6 +133,7 @@ export function SummaryBar({
           tone="text-pos"
         />
         <LevelReadout
+          className="metric-tile"
           label="Put Wall"
           term="put_wall"
           level={snapshot.levels.put_wall}
@@ -134,6 +141,7 @@ export function SummaryBar({
           tone="text-neg"
         />
         <Stat
+          className="metric-tile"
           label="Expected Move"
           term="expected_move"
           value={em?.move_abs != null ? `±${formatPrice(em.move_abs)}` : '--'}
@@ -144,6 +152,7 @@ export function SummaryBar({
           }
         />
         <Stat
+          className="metric-tile"
           label="0DTE GEX"
           value={formatExposure(snapshot.dte0.net_gex, settings.units)}
           sub={
@@ -157,12 +166,13 @@ export function SummaryBar({
           title={`Exact: ${snapshot.dte0.net_gex.toLocaleString('en-US')}`}
         />
         <Stat
+          className="metric-tile"
           label="P/C Ratios"
           term="put_call_ratio"
           value={formatRatio(snapshot.ratios.volume_ratio)}
           sub={`vol · ${formatRatio(snapshot.ratios.oi_ratio)} OI`}
         />
-        <Stat label="ATM IV" term="iv" value={formatIv(snapshot.atm_iv)} sub="front expiry" />
+        <Stat className="metric-tile" label="ATM IV" term="iv" value={formatIv(snapshot.atm_iv)} sub="front expiry" />
       </div>
 
       <div className="border-t border-line px-3 py-2 sm:px-4">

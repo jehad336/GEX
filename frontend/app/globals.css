@@ -5,20 +5,20 @@
 /* Dark is the default for a trading surface: it is where the eye spends the
    session. Light mode is a full peer, not an afterthought. */
 :root {
-  --bg: 9 11 16;
-  --surface: 15 18 26;
-  --raised: 22 26 36;
-  --line: 38 44 58;
-  --ink: 232 236 245;
-  --muted: 148 160 180;
-  --faint: 125 135 152;
-  --pos: 34 197 126;
-  --neg: 244 84 84;
-  --warn: 234 179 8;
-  --accent: 96 165 250;
-  --exposure-pos: 34 211 238;
-  --exposure-neg: 236 72 153;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --bg: 5 8 15;
+  --surface: 10 15 26;
+  --raised: 17 24 39;
+  --line: 40 51 72;
+  --ink: 239 244 252;
+  --muted: 157 171 194;
+  --faint: 112 126 151;
+  --pos: 45 211 147;
+  --neg: 251 101 112;
+  --warn: 245 184 65;
+  --accent: 91 188 255;
+  --exposure-pos: 45 212 255;
+  --exposure-neg: 244 91 176;
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 .light {
@@ -53,11 +53,12 @@ body {
   font-variant-numeric: tabular-nums;
   overflow-x: hidden;
   background-image:
-    linear-gradient(rgb(var(--line) / 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(var(--line) / 0.025) 1px, transparent 1px),
-    radial-gradient(circle at 12% -8%, rgb(var(--accent) / 0.09), transparent 28rem),
-    radial-gradient(circle at 92% 8%, rgb(var(--exposure-pos) / 0.045), transparent 24rem);
-  background-size: 32px 32px, 32px 32px, auto, auto;
+    linear-gradient(rgb(var(--line) / 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--line) / 0.022) 1px, transparent 1px),
+    radial-gradient(circle at 18% -12%, rgb(var(--accent) / 0.16), transparent 34rem),
+    radial-gradient(circle at 100% 0%, rgb(var(--exposure-pos) / 0.08), transparent 30rem),
+    radial-gradient(circle at 54% 115%, rgb(var(--exposure-neg) / 0.035), transparent 36rem);
+  background-size: 36px 36px, 36px 36px, auto, auto, auto;
   background-attachment: fixed;
 }
 
@@ -91,22 +92,27 @@ body {
 
 @layer components {
   .panel {
-    @apply rounded-xl border border-line/90 bg-surface/95 shadow-[0_10px_28px_rgba(0,0,0,0.12)];
+    @apply relative rounded-2xl border border-transparent;
+    background:
+      linear-gradient(145deg, rgb(var(--surface) / 0.98), rgb(var(--surface) / 0.91)) padding-box,
+      linear-gradient(135deg, rgb(var(--accent) / 0.22), rgb(var(--line) / 0.72) 34%, rgb(var(--line) / 0.5) 72%, rgb(var(--exposure-pos) / 0.14)) border-box;
+    box-shadow: 0 18px 48px rgb(0 0 0 / 0.24), inset 0 1px 0 rgb(255 255 255 / 0.025);
   }
   .panel-head {
-    @apply flex flex-wrap items-center justify-between gap-2 border-b border-line/80 px-3 py-2.5 sm:px-4;
+    @apply flex flex-wrap items-center justify-between gap-2 border-b border-line/65 px-3 py-3 sm:px-4;
+    background: linear-gradient(90deg, rgb(var(--raised) / 0.46), transparent 72%);
   }
   .panel-title {
-    @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-muted;
+    @apply text-[11px] font-bold uppercase tracking-[0.15em] text-muted;
   }
   .stat-label {
     @apply text-[10px] font-medium uppercase tracking-[0.11em] text-faint;
   }
   .chip {
-    @apply inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wider;
+    @apply inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[9px] font-bold uppercase tracking-[0.12em];
   }
   .btn {
-    @apply inline-flex min-h-8 items-center justify-center rounded-lg border border-line bg-raised px-2.5 py-1 text-xs font-medium text-muted transition-colors hover:border-faint hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30;
+    @apply inline-flex min-h-8 items-center justify-center rounded-xl border border-line/80 bg-raised/75 px-3 py-1 text-xs font-semibold text-muted shadow-sm transition hover:border-accent/35 hover:bg-raised hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30;
   }
   .btn-active {
     @apply border-accent/60 bg-accent/10 text-accent;
@@ -119,6 +125,81 @@ body {
   }
   .grid-table td {
     @apply whitespace-nowrap border-t border-line/60 px-2.5 py-1.5;
+  }
+}
+
+.premium-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(120deg, rgb(var(--surface) / 0.98), rgb(var(--raised) / 0.72)) padding-box,
+    linear-gradient(120deg, rgb(var(--accent) / 0.38), rgb(var(--line) / 0.54) 46%, rgb(var(--warn) / 0.18)) border-box;
+  box-shadow: 0 22px 60px rgb(0 0 0 / 0.27), inset 0 1px 0 rgb(255 255 255 / 0.035);
+}
+
+.premium-hero::before {
+  content: '';
+  position: absolute;
+  width: 22rem;
+  height: 22rem;
+  right: -8rem;
+  top: -15rem;
+  border-radius: 9999px;
+  background: rgb(var(--accent) / 0.17);
+  filter: blur(24px);
+  z-index: -1;
+}
+
+.premium-hero::after {
+  content: 'Γ';
+  position: absolute;
+  right: 2rem;
+  top: 50%;
+  transform: translateY(-52%);
+  font-size: 7rem;
+  font-weight: 900;
+  line-height: 1;
+  color: rgb(var(--accent) / 0.055);
+  z-index: -1;
+}
+
+.premium-search {
+  background: linear-gradient(180deg, rgb(var(--raised) / 0.9), rgb(var(--surface) / 0.9));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.035), 0 10px 28px rgb(0 0 0 / 0.14);
+}
+
+.metric-tile {
+  min-width: 0;
+  border: 1px solid rgb(var(--line) / 0.62);
+  border-radius: 0.85rem;
+  padding: 0.75rem;
+  background: linear-gradient(145deg, rgb(var(--raised) / 0.5), rgb(var(--surface) / 0.18));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.018);
+}
+
+.metric-tile:first-child {
+  border-color: rgb(var(--accent) / 0.28);
+  background: linear-gradient(145deg, rgb(var(--accent) / 0.11), rgb(var(--raised) / 0.28));
+}
+
+.luxury-kicker {
+  background: linear-gradient(90deg, rgb(var(--accent)), rgb(var(--exposure-pos)) 55%, rgb(var(--warn)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@media (max-width: 639px) {
+  .premium-hero::after {
+    right: 0.75rem;
+    top: 1.25rem;
+    transform: none;
+    font-size: 4rem;
+  }
+  .metric-tile {
+    padding: 0.65rem;
   }
 }
 

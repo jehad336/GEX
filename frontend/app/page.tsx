@@ -161,17 +161,17 @@ function Dashboard() {
       ) : null}
 
         <main id="market-overview" className="mx-auto max-w-[1920px] scroll-mt-32 space-y-3 p-2.5 sm:scroll-mt-24 sm:space-y-4 sm:p-4">
-        <section className="flex flex-col gap-3 pt-1 lg:flex-row lg:items-end lg:justify-between">
+        <section className="premium-hero flex flex-col gap-4 rounded-2xl px-4 py-4 sm:px-5 sm:py-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="mb-1 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-accent">
-              <span className="h-px w-5 bg-accent" /> Live workspace
+            <div className="luxury-kicker mb-1.5 flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.2em]">
+              <span className="h-px w-6 bg-accent" /> Live intelligence workspace
             </div>
-            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">GEX Market Intelligence</h1>
-            <p className="mt-1 max-w-2xl text-xs text-faint">Gamma structure, dealer positioning and actionable options context in one workspace.</p>
+            <h1 className="text-xl font-extrabold tracking-[-0.025em] sm:text-3xl">GEX Market Intelligence</h1>
+            <p className="mt-1.5 max-w-2xl text-xs leading-relaxed text-muted sm:text-sm">Gamma structure, dealer positioning and actionable options context—composed as one institutional market cockpit.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2" aria-label="Workspace status">
-            <span className="chip border-line bg-surface text-muted">10 analytics modules</span>
-            <span className="chip border-warn/30 bg-warn/5 text-warn">Observed + model</span>
+            <span className="chip border-accent/25 bg-accent/10 text-accent">10 analytics modules</span>
+            <span className="chip border-warn/30 bg-warn/[0.08] text-warn">Observed + model</span>
           </div>
         </section>
         {/* ---- summary ---- */}

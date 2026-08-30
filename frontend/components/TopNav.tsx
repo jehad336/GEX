@@ -147,11 +147,11 @@ export function TopNav({
   const marketMeta = status ? MARKET_STATE_META[status.state] : null;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line/90 bg-bg/90 shadow-[0_12px_32px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-line/70 bg-bg/72 shadow-[0_18px_50px_rgba(0,0,0,0.28)] backdrop-blur-2xl">
       <div className="mx-auto max-w-[1920px]">
         <div className="flex flex-wrap items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-4">
           <div className="flex min-w-0 shrink-0 items-center gap-2.5 xl:hidden">
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-accent/25 bg-gradient-to-br from-accent/25 to-exposurePos/5 text-base font-black text-accent shadow-[0_0_24px_rgba(96,165,250,0.12)]">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-accent/30 bg-gradient-to-br from-accent/25 via-accent/10 to-exposurePos/10 text-base font-black text-accent shadow-[0_0_30px_rgba(91,188,255,0.16)]">
               Γ
             </div>
             <div className="hidden leading-none sm:block">
@@ -185,7 +185,7 @@ export function TopNav({
               }}
               placeholder="Search symbol or company…"
               aria-label="Symbol search"
-              className="h-10 w-full rounded-xl border border-line bg-raised/80 pl-9 pr-12 text-sm text-ink shadow-inner outline-none placeholder:text-faint transition focus:border-accent/70 focus:ring-2 focus:ring-accent/10"
+              className="premium-search h-10 w-full rounded-xl border border-line/80 pl-9 pr-12 text-sm text-ink outline-none placeholder:text-faint transition focus:border-accent/60 focus:ring-2 focus:ring-accent/15"
             />
             <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-line bg-bg px-1.5 py-0.5 text-[9px] text-faint sm:block">
               ↵
