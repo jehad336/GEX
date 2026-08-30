@@ -35,6 +35,7 @@ import { SettingsDrawer } from '@/components/SettingsDrawer';
 import { SummaryBar } from '@/components/SummaryBar';
 import { TopNav } from '@/components/TopNav';
 import { OpportunityPanel } from '@/components/OpportunityPanel';
+import { AnalysisTabs, SidebarNav } from '@/components/SidebarNav';
 import { EmptyBlock, ErrorBlock, LoadingBlock, Panel, SegmentedControl } from '@/components/ui';
 
 const ALL_SYMBOLS = ['SPX', 'SPY', 'QQQ', 'NDX', 'IWM', 'DIA', 'NVDA', 'TSLA', 'AAPL', 'AMD', 'MSFT', 'AMZN', 'META'];
@@ -136,7 +137,9 @@ function Dashboard() {
 
   return (
     <div className="min-h-screen">
-      <TopNav
+      <SidebarNav symbol={symbol} />
+      <div className="min-h-screen xl:pl-60">
+        <TopNav
         symbol={symbol}
         onSymbolChange={selectSymbol}
         settings={settings}
@@ -148,7 +151,7 @@ function Dashboard() {
         activeView="dashboard"
       />
 
-      {demoBanner ? (
+        {demoBanner ? (
         <div className="border-b border-accent/40 bg-accent/10 px-4 py-2">
           <p className="text-center text-xs font-semibold text-accent">
             <span className="sm:hidden">DEMO DATA — synthetic evaluation feed, not market data.</span>
@@ -157,7 +160,17 @@ function Dashboard() {
         </div>
       ) : null}
 
-      <main id="market-overview" className="mx-auto max-w-[1920px] scroll-mt-32 space-y-3 p-2.5 sm:scroll-mt-24 sm:space-y-4 sm:p-4">
+        <main id="market-overview" className="mx-auto max-w-[1920px] scroll-mt-32 space-y-3 p-2.5 sm:scroll-mt-24 sm:space-y-4 sm:p-4">
+        <section className="flex flex-col gap-3 pt-1 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="mb-1 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-accent">
+              <span className="h-px w-5 bg-accent" /> Live workspace
+            </div>
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">GEX Market Intelligence</h1>
+            <p className="mt-1 max-w-2xl text-xs text-faint">Gamma structure, dealer positioning and actionable options context in one workspace.</p>
+          </div>
+          <AnalysisTabs symbol={symbol} />
+        </section>
         {/* ---- summary ---- */}
         {snapshotQuery.error && !snapshot ? (
           <div className="panel p-4">
@@ -419,7 +432,8 @@ function Dashboard() {
             not published and cannot be recovered exactly. Nothing here is investment advice.
           </p>
         </footer>
-      </main>
+        </main>
+      </div>
 
       <SettingsDrawer
         open={settingsOpen}

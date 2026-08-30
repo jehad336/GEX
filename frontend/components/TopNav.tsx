@@ -150,7 +150,7 @@ export function TopNav({
     <header className="sticky top-0 z-40 border-b border-line/90 bg-bg/90 shadow-[0_12px_32px_rgba(0,0,0,0.22)] backdrop-blur-xl">
       <div className="mx-auto max-w-[1920px]">
         <div className="flex flex-wrap items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-4">
-          <div className="flex min-w-0 shrink-0 items-center gap-2.5">
+          <div className="flex min-w-0 shrink-0 items-center gap-2.5 xl:hidden">
             <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-accent/25 bg-gradient-to-br from-accent/25 to-exposurePos/5 text-base font-black text-accent shadow-[0_0_24px_rgba(96,165,250,0.12)]">
               Γ
             </div>
@@ -250,7 +250,7 @@ export function TopNav({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 border-t border-line/80 px-2 sm:px-4">
+        <div className="flex items-center gap-2 border-t border-line/80 px-2 sm:px-4 xl:hidden">
           <nav className="no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-1.5" aria-label="Primary screens">
             {SCREEN_LINKS.map(({ label, short, anchor }) => (
               <Link

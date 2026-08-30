@@ -53,8 +53,11 @@ body {
   font-variant-numeric: tabular-nums;
   overflow-x: hidden;
   background-image:
+    linear-gradient(rgb(var(--line) / 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--line) / 0.025) 1px, transparent 1px),
     radial-gradient(circle at 12% -8%, rgb(var(--accent) / 0.09), transparent 28rem),
     radial-gradient(circle at 92% 8%, rgb(var(--exposure-pos) / 0.045), transparent 24rem);
+  background-size: 32px 32px, 32px 32px, auto, auto;
   background-attachment: fixed;
 }
 

@@ -29,6 +29,7 @@ import { AnalyticsPanel } from '@/components/exposure/AnalyticsPanel';
 import { LadderTable, type SortKey } from '@/components/exposure/LadderTable';
 import { StrikeDrawer } from '@/components/exposure/StrikeDrawer';
 import { MainNav } from '@/components/MainNav';
+import { SidebarNav } from '@/components/SidebarNav';
 import { SettingsDrawer } from '@/components/SettingsDrawer';
 import {
   ErrorBlock,
@@ -220,6 +221,8 @@ function ExposureLadder() {
 
   return (
     <div className="min-h-screen">
+      <SidebarNav symbol={symbol} />
+      <div className="min-h-screen xl:pl-60">
       {/* ---------------- toolbar ---------------- */}
       <header className="z-40 border-b border-line/90 bg-bg/90 shadow-[0_12px_32px_rgba(0,0,0,0.22)] backdrop-blur-xl md:sticky md:top-0">
         <div className="flex items-center gap-2 px-3 py-2.5 sm:gap-4 sm:px-4">
@@ -233,8 +236,6 @@ function ExposureLadder() {
             </div>
             <span className="tnum rounded-lg border border-accent/25 bg-accent/10 px-2 py-1 text-sm font-bold text-accent">{symbol}</span>
           </div>
-
-          <MainNav className="hidden lg:flex" symbol={symbol} />
 
           <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
             {status ? (
@@ -269,7 +270,7 @@ function ExposureLadder() {
           </div>
         </div>
 
-        <div className="no-scrollbar overflow-x-auto border-t border-line/80 px-2 py-1.5 lg:hidden">
+        <div className="no-scrollbar overflow-x-auto border-t border-line/80 px-2 py-1.5 xl:hidden">
           <MainNav className="min-w-max" symbol={symbol} />
         </div>
 
@@ -479,6 +480,7 @@ function ExposureLadder() {
           Shortcuts: C centre on spot · 0 same-day · A all expirations · G/D/V/H switch exposure.
         </p>
       </footer>
+      </div>
 
       <StrikeDrawer
         row={selectedRow}
