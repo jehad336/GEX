@@ -147,11 +147,11 @@ export function TopNav({
   const marketMeta = status ? MARKET_STATE_META[status.state] : null;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line/70 bg-bg/72 shadow-[0_18px_50px_rgba(0,0,0,0.28)] backdrop-blur-2xl">
+    <header className="sticky top-0 z-40 border-b border-line/70 bg-bg/92 backdrop-blur-xl">
       <div className="mx-auto max-w-[1920px]">
         <div className="flex flex-wrap items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-4">
           <div className="flex min-w-0 shrink-0 items-center gap-2.5 xl:hidden">
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-accent/30 bg-gradient-to-br from-accent/25 via-accent/10 to-exposurePos/10 text-base font-black text-accent shadow-[0_0_30px_rgba(91,188,255,0.16)]">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-accent/25 bg-accent/10 text-base font-black text-accent">
               Γ
             </div>
             <div className="hidden leading-none sm:block">
